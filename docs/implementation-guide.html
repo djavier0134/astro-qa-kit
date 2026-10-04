@@ -1,0 +1,1254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Astro Website QA — Implementation Guide</title>
+<style>
+  @page { size: A4; }
+
+  :root {
+    --ink: #16201e;
+    --ink-soft: #55615e;
+    --rule: #d8dcda;
+    --rule-soft: #e9ecea;
+    --accent: #0f6b62;
+    --accent-bg: #eef5f4;
+    --warn: #8a5000;
+    --warn-bg: #fdf4e5;
+    --fail: #a32c22;
+    --fail-bg: #fcefed;
+    --code-bg: #f4f6f5;
+    --font: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --mono: Consolas, "Cascadia Mono", "SFMono-Regular", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--font);
+    font-size: 10.2pt;
+    line-height: 1.5;
+    color: var(--ink);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  p { margin: 0 0 .5em; }
+  ul, ol { margin: .4em 0 .7em; padding-left: 1.3em; }
+  li { margin: .18em 0; }
+  strong, b { font-weight: 600; }
+
+  /* ---------- cover ---------- */
+
+  .cover { height: 247mm; display: flex; flex-direction: column; }
+  .cover .rule-top { height: 6px; background: var(--accent); margin-bottom: 14mm; }
+  .cover .kicker {
+    font-size: 8.5pt; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin-bottom: 8mm;
+  }
+  .cover h1 {
+    font-size: 30pt; line-height: 1.1; font-weight: 600;
+    letter-spacing: -.015em; margin: 0 0 6mm; max-width: 150mm;
+  }
+  .cover .sub { font-size: 12pt; color: var(--ink-soft); max-width: 140mm; line-height: 1.45; }
+  .cover .spacer { flex: 1; }
+  .cover .stack {
+    border-top: 1px solid var(--rule);
+    padding-top: 5mm; font-size: 9pt; color: var(--ink-soft);
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 4mm 10mm; max-width: 150mm;
+  }
+  .cover .stack dt { font-weight: 600; color: var(--ink); font-size: 8pt; letter-spacing: .06em; text-transform: uppercase; }
+  .cover .stack dd { margin: .5mm 0 0; }
+
+  /* ---------- contents ---------- */
+
+  .toc { break-before: page; }
+  .toc h2 { border: 0; margin-bottom: 6mm; }
+  .toc ol { list-style: none; padding: 0; margin: 0; column-count: 1; }
+  .toc > ol > li { margin: 0 0 1.5mm; font-weight: 600; font-size: 10.5pt; }
+  .toc ol ol { padding-left: 6mm; margin: .8mm 0 2.5mm; }
+  .toc ol ol li { font-weight: 400; font-size: 9.4pt; color: var(--ink-soft); margin: .3mm 0; }
+  .toc .num { display: inline-block; min-width: 9mm; color: var(--accent); }
+
+  /* ---------- structure ---------- */
+
+  .chapter { break-before: page; }
+
+  h2 {
+    font-size: 17pt; font-weight: 600; letter-spacing: -.01em;
+    margin: 0 0 4mm; padding-bottom: 2.5mm; border-bottom: 2px solid var(--ink);
+    break-after: avoid;
+  }
+  h2 .num { color: var(--accent); margin-right: 3mm; }
+
+  h3 {
+    font-size: 12pt; font-weight: 600; margin: 7mm 0 2mm;
+    break-after: avoid; letter-spacing: -.005em;
+  }
+  h3 .num { color: var(--accent); font-weight: 400; margin-right: 2.5mm; }
+
+  h4 {
+    font-size: 10.2pt; font-weight: 600; margin: 4.5mm 0 1.5mm;
+    break-after: avoid;
+  }
+
+  .lede { font-size: 10.8pt; color: var(--ink-soft); margin-bottom: 4mm; max-width: 155mm; }
+
+  /* ---------- code ---------- */
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--rule-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 3px;
+    padding: 2.5mm 3mm;
+    margin: 2mm 0 3mm;
+    font-family: var(--mono);
+    font-size: 8.3pt;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+    break-inside: avoid;
+  }
+  pre.long { break-inside: auto; }
+  code {
+    font-family: var(--mono);
+    font-size: 8.8pt;
+    background: var(--code-bg);
+    border: 1px solid var(--rule-soft);
+    border-radius: 2px;
+    padding: 0 .9mm;
+    word-break: break-word;
+  }
+  pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+
+  /* ---------- tables ---------- */
+
+  table {
+    width: 100%; border-collapse: collapse; margin: 2.5mm 0 4mm;
+    font-size: 9pt; break-inside: avoid;
+  }
+  table.long { break-inside: auto; }
+  table.long tr { break-inside: avoid; }
+  th, td { text-align: left; padding: 1.6mm 2.2mm; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  thead th {
+    font-size: 7.8pt; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-soft); border-bottom: 1.5px solid var(--rule); font-weight: 600;
+  }
+  thead { display: table-header-group; }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.n { font-family: var(--mono); color: var(--accent); white-space: nowrap; width: 8mm; }
+  td.k { white-space: nowrap; }
+
+  .sev { font-weight: 600; font-size: 8.2pt; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+  .sev.e { color: var(--fail); }
+  .sev.w { color: var(--warn); }
+  .sev.p { color: var(--accent); }
+
+  /* ---------- callouts ---------- */
+
+  .box {
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    background: var(--accent-bg);
+    border-radius: 3px;
+    padding: 2.8mm 3.5mm;
+    margin: 3mm 0;
+    font-size: 9.4pt;
+    break-inside: avoid;
+  }
+  .box.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  .box.stop { border-left-color: var(--fail); background: var(--fail-bg); }
+  .box > :first-child { margin-top: 0; }
+  .box > :last-child { margin-bottom: 0; }
+  .box .label {
+    display: block; font-size: 7.8pt; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 700; margin-bottom: 1.2mm; color: var(--accent);
+  }
+  .box.warn .label { color: var(--warn); }
+  .box.stop .label { color: var(--fail); }
+
+  /* ---------- step blocks ---------- */
+
+  .step {
+    border-top: 1px solid var(--rule-soft);
+    padding-top: 3mm;
+    margin-top: 4mm;
+    break-inside: avoid-page;
+  }
+  .step.open { break-inside: auto; }
+  .step-title { font-size: 11pt; font-weight: 600; margin: 0 0 1.5mm; }
+  .step-title .n {
+    display: inline-block; min-width: 7mm; color: #fff; background: var(--accent);
+    border-radius: 2px; text-align: center; font-size: 8.5pt; font-family: var(--mono);
+    padding: .3mm 1mm; margin-right: 2.5mm; vertical-align: 1px;
+  }
+
+  /* ---------- flow ---------- */
+
+  .flow { border: 1px solid var(--rule); border-radius: 3px; padding: 4mm; margin: 3mm 0; break-inside: avoid; font-size: 9.4pt; }
+  .flow .row { display: flex; align-items: flex-start; gap: 2.5mm; margin: .8mm 0; }
+  .flow .pip { width: 2.2mm; height: 2.2mm; border-radius: 50%; background: var(--accent); margin-top: 1.6mm; flex: none; }
+  .flow .pip.good { background: #2f7d4f; }
+  .flow .pip.bad { background: var(--fail); }
+  .flow .indent { margin-left: 5mm; padding-left: 3mm; border-left: 1px solid var(--rule); }
+
+  .tiny { font-size: 8.6pt; color: var(--ink-soft); }
+  .nowrap { white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<!-- ================= COVER ================= -->
+<section class="cover">
+  <div class="rule-top"></div>
+  <div class="kicker">Goodly Growth &middot; Web Team</div>
+  <h1>Astro Website QA in CI/CD</h1>
+  <p class="sub">A reusable, automated pre-live QA gate for Astro websites. QA runs on every push, reports PASS / WARNING / FAIL in plain language, and blocks production deployment when critical checks fail.</p>
+  <div class="spacer"></div>
+  <dl class="stack">
+    <div><dt>Engine</dt><dd>Node 20 &middot; Playwright &middot; axe-core &middot; Lighthouse CI</dd></div>
+    <div><dt>CI</dt><dd>GitLab CI and GitHub Actions</dd></div>
+    <div><dt>Deployment</dt><dd>Cloudflare Pages via Wrangler</dd></div>
+    <div><dt>Scope</dt><dd>Astro sites of roughly 5&ndash;100 pages</dd></div>
+    <div><dt>First repo</dt><dd>60&ndash;90 minutes</dd></div>
+    <div><dt>Each repo after</dt><dd>About 10 minutes</dd></div>
+  </dl>
+</section>
+
+<!-- ================= CONTENTS ================= -->
+<section class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><span class="num">1</span>What this system does
+      <ol>
+        <li>The problem it solves</li>
+        <li>What it checks &mdash; and what it does not</li>
+        <li>The pipeline</li>
+        <li>The severity model</li>
+      </ol>
+    </li>
+    <li><span class="num">2</span>What is in the kit</li>
+    <li><span class="num">3</span>Phase 1 &mdash; Local setup
+      <ol>
+        <li>Create the branch</li>
+        <li>Install the kit</li>
+        <li>Install the dependencies</li>
+        <li>Run it against the site</li>
+      </ol>
+    </li>
+    <li><span class="num">4</span>Configuration reference
+      <ol>
+        <li>Identity &mdash; the highest-value checks</li>
+        <li>Contact details</li>
+        <li>Pages</li>
+        <li>Selectors and landmarks</li>
+        <li>Viewports and layout rules</li>
+        <li>Interactions</li>
+        <li>Typography and brand colours</li>
+        <li>Images</li>
+        <li>Accessibility</li>
+        <li>Crawl, runtime noise and timeouts</li>
+        <li>Lighthouse</li>
+        <li>Severity overrides</li>
+        <li>Environment variables</li>
+      </ol>
+    </li>
+    <li><span class="num">5</span>Getting to a clean first run</li>
+    <li><span class="num">6</span>Phase 2A &mdash; GitLab implementation</li>
+    <li><span class="num">7</span>Phase 2B &mdash; GitHub implementation</li>
+    <li><span class="num">8</span>Phase 3 &mdash; Cloudflare</li>
+    <li><span class="num">9</span>Phase 4 &mdash; Proving the gate works</li>
+    <li><span class="num">10</span>Day-to-day workflow</li>
+    <li><span class="num">11</span>Rolling it out across every site</li>
+    <li><span class="num">12</span>Troubleshooting</li>
+    <li><span class="num">A</span>Appendix A &mdash; every check, with default severity</li>
+    <li><span class="num">B</span>Appendix B &mdash; the complete qa-config.json</li>
+  </ol>
+</section>
+
+<!-- ================= 1 ================= -->
+<section class="chapter">
+  <h2><span class="num">1</span>What this system does</h2>
+
+  <h3><span class="num">1.1</span>The problem it solves</h3>
+  <p>Most things that embarrass a web team on launch day are not subtle. A link to a page that was renamed. A hero image that 404s only on the live host. The previous client's name still in the footer because the site was cloned from theirs. A contact form that silently disappeared in a refactor. A layout that scrolls sideways on a phone.</p>
+  <p>All of those are mechanically detectable, and all of them are routinely missed because checking them by hand across five viewports and twenty pages is tedious work that gets skipped under deadline. This system does that work on every push, in about eight minutes, and refuses to let a broken build reach production.</p>
+
+  <h3><span class="num">1.2</span>What it checks &mdash; and what it does not</h3>
+  <p>It does <em>not</em> read your <code>.astro</code> source files. It builds the site, serves the production output, and drives a real browser over the rendered pages across Chromium, Firefox and WebKit.</p>
+  <p>That distinction matters. A linter reads your components; this reads the website your client will see. It will not tell you a component is badly structured. It will tell you that the structure produced a page with no H1, a stretched logo and 1,441 pixels of horizontal overflow at mobile width.</p>
+  <p>Thirty-four checks run in seven modules. Appendix A lists all of them. In summary:</p>
+  <table>
+    <thead><tr><th>Module</th><th>Covers</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Pages &amp; SEO</td><td>Required pages load, the custom 404 page is intact, title / meta description / H1 / viewport / lang, accidental <code>noindex</code>, canonical and Open Graph, heading hierarchy, <code>robots.txt</code>, sitemap, browser runtime errors</td></tr>
+      <tr><td class="k">Identity</td><td>Forbidden business names anywhere on the page, expected business name present, phone and email in both visible text and <code>tel:</code>/<code>mailto:</code> links, privacy policy exists and is linked, logo links to the homepage</td></tr>
+      <tr><td class="k">Forms</td><td>A form exists on every page that needs one (native, GoHighLevel/LeadConnector, HubSpot or other iframe embeds), required fields present, accessible labels, a submit button, and no wrong company name inside the form region</td></tr>
+      <tr><td class="k">Links</td><td>Internal links resolve including soft-404 detection; external links reachable, with rate-limited hosts skipped rather than failed</td></tr>
+      <tr><td class="k">Images</td><td>Failed loads, zero natural size, broken background images, stretched aspect ratios, missing <code>alt</code>, file-size budget, lazy loading below the fold</td></tr>
+      <tr><td class="k">Layout</td><td>Horizontal overflow, disappearing elements, clipped text and element overlap at five viewports, container width and page gutters, optional screenshot regression</td></tr>
+      <tr><td class="k">Interaction &amp; a11y</td><td>Menus, modals, dropdowns and drawers open and close and stay keyboard reachable; hover and focus states produce a visible change; axe-core WCAG 2.1 A/AA scan</td></tr>
+      <tr><td class="k">Performance</td><td>Lighthouse CI on key pages with configurable thresholds</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box">
+    <span class="label">Design principle</span>
+    <p>Checks that cannot be inferred from the site &mdash; brand colour rules, element-overlap pairs, visual-regression baselines &mdash; ship <strong>disabled</strong>. Turning them on is a deliberate decision you make once a design is signed off. A QA gate that cries wolf in week one gets switched off in week two.</p>
+  </div>
+
+  <h3><span class="num">1.3</span>The pipeline</h3>
+  <div class="flow">
+    <div class="row"><span class="pip"></span><span>Developer pushes to any branch</span></div>
+    <div class="row"><span class="pip"></span><span>CI installs dependencies and Playwright browsers</span></div>
+    <div class="row"><span class="pip"></span><span>Astro production build</span></div>
+    <div class="row"><span class="pip"></span><span>Local production preview server starts</span></div>
+    <div class="row"><span class="pip"></span><span>Site crawled <strong>once</strong>; all modules share that crawl</span></div>
+    <div class="row"><span class="pip"></span><span>Pages &amp; SEO &rarr; links &rarr; images &rarr; responsive &rarr; interactions &rarr; accessibility &rarr; cross-browser</span></div>
+    <div class="row"><span class="pip"></span><span>Lighthouse CI</span></div>
+    <div class="row"><span class="pip"></span><span>Reporter aggregates everything and decides PASS or FAIL</span></div>
+    <div class="indent">
+      <div class="row"><span class="pip bad"></span><span><strong>FAIL</strong> &rarr; job fails &rarr; deployment never starts</span></div>
+      <div class="row"><span class="pip good"></span><span><strong>PASS</strong> + push to the default branch &rarr; Cloudflare Pages deployment</span></div>
+    </div>
+  </div>
+  <p>Two details are worth understanding, because they explain most of the system's behaviour.</p>
+  <p><strong>Every QA module exits 0.</strong> Modules record findings; they never fail the job themselves. A module that crashes records that crash as an error and the rest still run. This means one broken check cannot hide the other thirty-three, and a CI run always produces a complete report.</p>
+  <p><strong>The reporter is the only gate.</strong> <code>qa-reporter.mjs</code> reads every module's output, applies the configured severities, writes the reports and exits 1 if any error exists. There is exactly one place where PASS becomes FAIL.</p>
+
+  <h3><span class="num">1.4</span>The severity model</h3>
+  <table>
+    <thead><tr><th>Level</th><th>Effect</th><th>Typical members</th></tr></thead>
+    <tbody>
+      <tr><td><span class="sev e">Error</span></td><td>Fails the job, blocks deployment</td><td>Broken required page, broken internal link, missing form, wrong company name, horizontal overflow, missing H1, accidental <code>noindex</code>, critical accessibility violation, Lighthouse below threshold</td></tr>
+      <tr><td><span class="sev w">Warning</span></td><td>Visible in the report, does not block</td><td>Missing <code>alt</code>, multiple H1, external link failure, missing canonical, typography or colour drift, oversized image, minor accessibility violation</td></tr>
+      <tr><td><span class="sev p">Pass</span></td><td>Requirement satisfied</td><td>&mdash;</td></tr>
+    </tbody>
+  </table>
+  <p>Every one of the fifty-plus rules can be moved between those levels, or set to <code>"off"</code>, from a single <code>severity</code> block in the config. Section 4.12 lists every key. Setting <code>"failOnWarnings": true</code> makes warnings block as well.</p>
+</section>
+
+<!-- ================= 2 ================= -->
+<section class="chapter">
+  <h2><span class="num">2</span>What is in the kit</h2>
+
+  <table class="long">
+    <thead><tr><th>File</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td class="k"><code>scripts/qa-config.json</code></td><td><strong>The only file you edit per site.</strong> Business identity, pages, selectors, thresholds, severities.</td></tr>
+      <tr><td class="k"><code>scripts/qa-lib.mjs</code></td><td>Shared helpers: config loading, severity resolution, the result model, URL normalisation, browser launch, runtime collectors.</td></tr>
+      <tr><td class="k"><code>scripts/qa-crawl.mjs</code></td><td>One shared crawl, cached to <code>qa-results/crawl.json</code>. Every module reuses it, so the site is crawled once per run, not once per module.</td></tr>
+      <tr><td class="k"><code>scripts/qa-layout.mjs</code></td><td>Shared layout audit used by the responsive and cross-browser modules so both report identically.</td></tr>
+      <tr><td class="k"><code>scripts/qa-check.mjs</code></td><td>Core module: required pages, 404 page, SEO, identity, contact details, privacy policy, logo, forms, typography, colours, <code>robots.txt</code>, sitemap, runtime errors.</td></tr>
+      <tr><td class="k"><code>scripts/check-links.mjs</code></td><td>Internal and external link validation.</td></tr>
+      <tr><td class="k"><code>scripts/check-images.mjs</code></td><td>Broken, distorted, oversized and un-lazy-loaded images; missing <code>alt</code>.</td></tr>
+      <tr><td class="k"><code>scripts/responsive-check.mjs</code></td><td>Five viewports, layout audit, screenshots of every failure.</td></tr>
+      <tr><td class="k"><code>scripts/interaction-check.mjs</code></td><td>Configured interactions plus hover and focus state checks.</td></tr>
+      <tr><td class="k"><code>scripts/accessibility-check.mjs</code></td><td>axe-core WCAG scan.</td></tr>
+      <tr><td class="k"><code>scripts/cross-browser-check.mjs</code></td><td>Firefox and WebKit smoke suite.</td></tr>
+      <tr><td class="k"><code>scripts/qa-reporter.mjs</code></td><td><strong>The gate.</strong> Writes <code>qa-report.md</code>, <code>qa-report.json</code> and <code>qa-report.junit.xml</code>; exits 0 or 1.</td></tr>
+      <tr><td class="k"><code>scripts/qa-all.mjs</code></td><td>Runs the whole suite locally in CI order. Cross-platform.</td></tr>
+      <tr><td class="k"><code>scripts/record-result.mjs</code></td><td>Folds an external CI step's outcome into the report.</td></tr>
+      <tr><td class="k"><code>tests/cross-browser.spec.mjs</code></td><td>Optional Playwright-runner smoke suite, for local debugging with traces.</td></tr>
+      <tr><td class="k"><code>tests/visual/visual.spec.mjs</code></td><td>Optional visual regression against approved baselines.</td></tr>
+      <tr><td class="k"><code>lighthouserc.cjs</code></td><td>Lighthouse CI config; reads pages and thresholds from <code>qa-config.json</code>.</td></tr>
+      <tr><td class="k"><code>playwright.config.mjs</code></td><td>Config for the optional test-runner suites only.</td></tr>
+      <tr><td class="k"><code>.gitlab-ci.yml</code></td><td>GitLab pipeline.</td></tr>
+      <tr><td class="k"><code>.github/workflows/<wbr>qa-deploy.yml</code></td><td>GitHub Actions workflow.</td></tr>
+      <tr><td class="k"><code>install-qa.mjs</code></td><td>Installs the kit into an Astro project and patches <code>package.json</code> and <code>.gitignore</code>.</td></tr>
+      <tr><td class="k"><code>README.md</code></td><td>Reference manual.</td></tr>
+      <tr><td class="k"><code>SETUP-GITHUB.md</code> / <code>SETUP-GITLAB.md</code></td><td>Platform runbooks.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Output produced by a run</h3>
+  <table>
+    <thead><tr><th>Artifact</th><th>Audience</th></tr></thead>
+    <tbody>
+      <tr><td class="k"><code>qa-report.md</code></td><td>Project managers. Rendered directly into the GitHub job summary. Tables of errors, warnings, Lighthouse scores and an accessibility summary.</td></tr>
+      <tr><td class="k"><code>qa-report.json</code></td><td>Tooling. Every finding with module, rule key, page, viewport and severity.</td></tr>
+      <tr><td class="k"><code>qa-report.junit.xml</code></td><td>CI test widgets. GitLab renders it in the merge request: errors as failed tests, warnings as skipped.</td></tr>
+      <tr><td class="k"><code>qa-results/screenshots/</code></td><td>Developers. A full-page screenshot of every failed viewport.</td></tr>
+      <tr><td class="k"><code>.lighthouseci/</code></td><td>Full Lighthouse HTML reports.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ================= 3 ================= -->
+<section class="chapter">
+  <h2><span class="num">3</span>Phase 1 &mdash; Local setup</h2>
+  <p class="lede">Identical on GitLab and GitHub. Get a clean run on your machine before you push anything &mdash; debugging forty findings through a CI log is slow and demoralising, and the local loop takes seconds.</p>
+
+  <div class="step">
+    <p class="step-title"><span class="n">1</span>Create the branch</p>
+    <pre>git checkout main &amp;&amp; git pull
+git checkout -b setup/qa-cicd</pre>
+  </div>
+
+  <div class="step">
+    <p class="step-title"><span class="n">2</span>Install the kit</p>
+    <p>Run from the root of the Astro project. The <code>.</code> is the target directory.</p>
+    <pre>node /path/to/astro-qa-kit/install-qa.mjs .           # GitHub Actions
+node /path/to/astro-qa-kit/install-qa.mjs . --gitlab  # GitLab CI
+node /path/to/astro-qa-kit/install-qa.mjs . --both    # both CI files</pre>
+    <p>The installer copies the engine, the CI file, <code>lighthouserc.cjs</code>, <code>playwright.config.mjs</code> and the test suites; adds the <code>qa:*</code> npm scripts; and appends the QA output paths to <code>.gitignore</code>. It never overwrites an existing file &mdash; pass <code>--force</code> only when deliberately upgrading a site that already has the kit.</p>
+    <pre>git status --short</pre>
+    <p>Expect <code>scripts/</code>, <code>tests/</code>, <code>lighthouserc.cjs</code>, <code>playwright.config.mjs</code>, the CI file, and a modified <code>package.json</code> and <code>.gitignore</code>.</p>
+  </div>
+
+  <div class="step">
+    <p class="step-title"><span class="n">3</span>Install the dependencies</p>
+    <pre>npm install -D playwright @playwright/test @lhci/cli wait-on wrangler @axe-core/playwright
+npx playwright install --with-deps chromium firefox webkit</pre>
+    <p>The browser download is roughly 400&nbsp;MB and happens once per machine. On Windows and macOS, drop <code>--with-deps</code>; it installs Linux system packages and does nothing elsewhere.</p>
+    <div class="box">
+      <span class="label">Local shortcut</span>
+      <p>To skip the browser download while experimenting, run against an installed Chrome or Edge: <code>QA_CHROMIUM_CHANNEL=chrome npm run qa:all</code>. Leave this unset in CI so every run uses the pinned Playwright build.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <p class="step-title"><span class="n">4</span>Run it against the site</p>
+    <p>Terminal 1 &mdash; build and serve the production output:</p>
+    <pre>npm run build &amp;&amp; npm run preview -- --host 127.0.0.1 --port 4321</pre>
+    <p>Terminal 2 &mdash; run the suite:</p>
+    <pre>npm run qa:all</pre>
+    <p>While iterating on the config, skip the two slow modules:</p>
+    <pre>npm run qa:all -- --skip lighthouse,crossbrowser</pre>
+    <p>Individual modules are available as <code>npm run qa:core</code>, <code>qa:links</code>, <code>qa:images</code>, <code>qa:responsive</code>, <code>qa:interactions</code>, <code>qa:accessibility</code> and <code>qa:cross-browser</code>. Each writes to <code>qa-results/</code> and exits 0; <code>npm run qa:report</code> aggregates them and is the only command that can exit non-zero.</p>
+    <div class="box warn">
+      <span class="label">SSR sites</span>
+      <p><code>astro preview</code> does not work with an SSR adapter. Serve the built output with the adapter's own command instead and point the QA engine at it with <code>QA_BASE_URL</code>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 4 ================= -->
+<section class="chapter">
+  <h2><span class="num">4</span>Configuration reference</h2>
+  <p class="lede">Everything site-specific lives in <code>scripts/qa-config.json</code>. The engine contains no client names and no production URLs, which is what makes the same code reusable across every site you build. Appendix B is the complete default file.</p>
+
+  <h3><span class="num">4.1</span>Identity &mdash; the highest-value checks</h3>
+  <pre>"businessName": "Acme Plumbing",
+"businessNameAliases": ["Acme Plumbing Ltd", "Acme"],
+"forbiddenBusinessNames": ["Nextkin", "Previous Client Name", "Lorem Ipsum Co"]</pre>
+  <p><code>forbiddenBusinessNames</code> is the single most valuable field in the file. Fill it with the name of whatever site this one was cloned from, plus any placeholder names your templates carry. The engine scans visible text, <code>&lt;title&gt;</code>, meta description, Open Graph tags, the footer and form regions. A hit is an error, which is exactly right: a leaked client name must never reach production.</p>
+  <p><code>businessName</code> missing from a required page is a <span class="sev w">warning</span> by default, since a legitimate page may not mention it.</p>
+
+  <h3><span class="num">4.2</span>Contact details</h3>
+  <pre>"phone": "+1 604 555 1234",
+"requiredPhone": true,
+"email": "hello@acmeplumbing.com",
+"emailDomain": "acmeplumbing.com",
+"requiredEmail": true</pre>
+  <p>Phone numbers are compared on their last ten digits, so <code>(604) 555-1234</code>, <code>604.555.1234</code> and <code>+16045551234</code> all match. The engine checks both the visible text and the <code>tel:</code> links, and reports three distinct situations: missing entirely (<span class="sev e">error</span> when required), present as text but with no matching <code>tel:</code> link or vice versa (<span class="sev w">warning</span>), and a <code>tel:</code> link pointing at a completely different number (<span class="sev w">warning</span>). The last one catches a very common template-leftover bug.</p>
+  <p><code>emailDomain</code> flags <code>mailto:</code> links on an unexpected domain.</p>
+
+  <h3><span class="num">4.3</span>Pages</h3>
+  <pre>"requiredPages": ["/", "/about/", "/services/", "/contact/", "/privacy-policy/"],
+"formPages": ["/contact/", "/request-a-quote/"],
+"responsivePages": ["/", "/services/", "/contact/"],
+"lighthousePages": ["/", "/about/", "/services/", "/contact/"],
+"privacyPolicyUrl": "/privacy-policy/",
+"notFoundPath": "/qa-404-probe-do-not-create/"</pre>
+  <table>
+    <thead><tr><th>Key</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td class="k"><code>requiredPages</code></td><td>Must return 2xx (redirects allowed). Also seeds the crawl.</td></tr>
+      <tr><td class="k"><code>formPages</code></td><td>Must contain a valid form.</td></tr>
+      <tr><td class="k"><code>responsivePages</code></td><td>Tested at every viewport. Keep short &mdash; this is pages &times; viewports.</td></tr>
+      <tr><td class="k"><code>lighthousePages</code></td><td>Lighthouse runs here, twice each by default.</td></tr>
+      <tr><td class="k"><code>notFoundPath</code></td><td>A URL guaranteed not to exist. The engine requests it to confirm a real 404 status and an intact 404 page: heading, body content, header, navigation links, footer, no broken images, no overflow.</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="num">4.4</span>Selectors and landmarks</h3>
+  <pre>"logoSelector": "header a.logo",
+"headerSelector": "header",
+"footerSelector": "footer",
+"navSelector": "header nav",
+"formSelectors": ["form", "iframe[src*='leadconnectorhq']", "iframe[src*='hubspot']"],
+"formRequiredFields": ["name", "email"]</pre>
+  <p>Open the site and confirm each selector matches before the first run. A wrong <code>logoSelector</code> produces a baffling "logo not found" error on every single run and is the most common setup mistake.</p>
+  <p><code>formRequiredFields</code> entries are matched loosely against each field's name, accessible label, placeholder and type, so <code>"email"</code> matches a field named <code>contact_email</code> or labelled "Email address".</p>
+  <div class="box">
+    <span class="label">Embedded forms</span>
+    <p>Cross-origin iframes cannot be read into. For GoHighLevel, HubSpot and similar embeds the engine verifies the iframe is present and visible, and scans its <code>title</code> and <code>src</code> for forbidden business names. Field-level checks apply to native <code>&lt;form&gt;</code> elements only.</p>
+  </div>
+
+  <h3><span class="num">4.5</span>Viewports and layout rules</h3>
+  <pre>"viewports": {
+  "mobile":  { "width": 375,  "height": 812  },
+  "tablet":  { "width": 768,  "height": 1024 },
+  "laptop":  { "width": 1366, "height": 768  },
+  "desktop": { "width": 1920, "height": 1080 },
+  "wide":    { "width": 2560, "height": 1440 }
+},
+"design": {
+  "containerSelector": ".container",
+  "containerMaxWidth": 1280,
+  "pageGutterMin": 16,
+  "overflowTolerancePx": 2,
+  "requiredVisibleSelectors": ["header", "main", "footer", "header nav"],
+  "noOverlapSelectors": []
+}</pre>
+  <p>At each viewport the engine scrolls the full page to trigger lazy content, then checks:</p>
+  <ul>
+    <li><strong>Horizontal overflow</strong> &mdash; <code>scrollWidth</code> beyond <code>clientWidth</code> past the tolerance, naming the outermost offending elements and their right edge in pixels. <span class="sev e">Error</span>.</li>
+    <li><strong>Missing elements</strong> &mdash; anything in <code>requiredVisibleSelectors</code> absent or invisible. <span class="sev e">Error</span>.</li>
+    <li><strong>Clipped text</strong> &mdash; text cut off by <code>overflow: hidden</code> without an intentional ellipsis. <span class="sev w">Warning</span>.</li>
+    <li><strong>Overlap</strong> &mdash; pairs from <code>noOverlapSelectors</code> covering more than 25% of the smaller element. <span class="sev w">Warning</span>.</li>
+    <li><strong>Container and gutters</strong> &mdash; only when <code>containerSelector</code> is set. <span class="sev w">Warning</span>.</li>
+  </ul>
+  <p><code>noOverlapSelectors</code> ships empty on purpose: generic overlap detection produces constant false positives. List only elements that must never collide, for example <code>["header .logo", "header nav"]</code>.</p>
+  <p>Every failed viewport produces a full-page screenshot in <code>qa-results/screenshots/</code>, uploaded as a CI artifact.</p>
+
+  <h3><span class="num">4.6</span>Interactions</h3>
+  <pre>"interactions": [
+  {
+    "name": "Mobile navigation",
+    "page": "/",
+    "viewport": "mobile",
+    "trigger": "[data-qa='menu-toggle']",
+    "target": "[data-qa='mobile-menu']",
+    "expect": "visible",
+    "closeAfter": true,
+    "optional": false,
+    "critical": true
+  }
+]</pre>
+  <p>Each entry drives one open-and-close test. The engine clicks the trigger, waits for the target to reach the expected state, then presses <kbd>Escape</kbd> and, failing that, activates the trigger again to confirm it closes. It also verifies the trigger is keyboard focusable and that no console errors fire during the interaction.</p>
+  <table>
+    <thead><tr><th>Key</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td class="k"><code>optional</code></td><td><code>true</code> passes quietly when the trigger does not exist. Use while a component is still being built.</td></tr>
+      <tr><td class="k"><code>critical</code></td><td>Defaults to <code>true</code>; also runs in the Firefox and WebKit smoke suite.</td></tr>
+      <tr><td class="k"><code>closeAfter</code></td><td>Set <code>false</code> for things that are not meant to close.</td></tr>
+      <tr><td class="k"><code>expect</code></td><td><code>"visible"</code> or <code>"hidden"</code>.</td></tr>
+    </tbody>
+  </table>
+  <p>Add one entry per menu, modal, dropdown, accordion, tab set and drawer. If you control the templates, add <code>data-qa</code> attributes and target those &mdash; they survive CSS refactors in a way that <code>.nav__toggle--active</code> does not.</p>
+  <p>Hover and focus states are configured separately:</p>
+  <pre>"states": {
+  "enabled": true,
+  "pages": ["/"],
+  "selectors": ["header nav a", "a.btn", "button[type='submit']"],
+  "maxElementsPerSelector": 5,
+  "requireFocusIndicator": true
+}</pre>
+  <p>For each element the engine snapshots computed styles, hovers, compares, moves the pointer away, focuses, and compares again. No change on hover is a warning; no visible focus indicator is a warning and a genuine keyboard-accessibility problem.</p>
+
+  <h3><span class="num">4.7</span>Typography and brand colours</h3>
+  <pre>"design": {
+  "typography": {
+    "body": { "selector": "body", "fontFamily": "Inter", "fontSize": "16px", "lineHeight": "24px" },
+    "h1":   { "selector": "h1", "fontFamily": "Inter", "fontSize": "48px", "fontWeight": "700" },
+    "nav":  { "selector": "header nav a", "fontSize": "16px" }
+  },
+  "brandColors": ["#111827", "#2563EB"],
+  "colorRules": [
+    { "name": "Primary button", "selector": ".btn-primary", "property": "backgroundColor", "expected": "#2563EB" },
+    { "name": "Body text", "selector": "body", "property": "color", "expected": "#111827" }
+  ]
+}</pre>
+  <p>Font families are compared on the first family in the computed stack, so a fallback chain does not cause a false failure. Colours are normalised, so <code>#2563EB</code>, <code>rgb(37, 99, 235)</code> and <code>rgba(37,99,235,1)</code> all compare equal. A rule with no <code>expected</code> falls back to the <code>brandColors</code> palette.</p>
+  <p>With <code>colorRules</code> empty, colour checking is skipped entirely. Both default to <span class="sev w">warning</span>; raise them to <span class="sev e">error</span> once a design is signed off and you want drift to block.</p>
+
+  <h3><span class="num">4.8</span>Images</h3>
+  <pre>"imageRules": {
+  "maxFileSizeKB": 500,
+  "requireLazyLoadBelowFold": true,
+  "preferModernFormats": false,
+  "checkBackgroundImages": true,
+  "aspectRatioTolerance": 0.1,
+  "maxPages": 50,
+  "criticalSelectors": ["header img", "img[alt*='logo' i]", "[class*='hero'] img"]
+}</pre>
+  <p>Anything matching <code>criticalSelectors</code> that fails to render is an <span class="sev e">error</span>; other broken images are a <span class="sev w">warning</span> by default. Distortion is only reported when <code>object-fit</code> actually allows stretching, which keeps the false-positive rate near zero. Lazy-loading warnings apply only below the fold, so critical LCP images are never flagged. <code>alt=""</code> is accepted as a deliberate marker for a decorative image; a missing <code>alt</code> attribute is not.</p>
+
+  <h3><span class="num">4.9</span>Accessibility</h3>
+  <pre>"accessibility": {
+  "enabled": true,
+  "pages": ["/", "/contact/"],
+  "tags": ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"],
+  "disableRules": [],
+  "errorImpacts": ["critical", "serious"]
+}</pre>
+  <p>Violations at an impact listed in <code>errorImpacts</code> become errors; everything else is a warning. The report includes a dedicated accessibility summary with a link to axe's fix guidance for each rule. Lighthouse contributes a second, independent accessibility score on top.</p>
+  <div class="box warn">
+    <span class="label">Expectation setting</span>
+    <p>Automated tooling catches roughly a third of real accessibility problems. Keyboard-only navigation and a screen-reader pass are still worth doing before a launch that matters.</p>
+  </div>
+
+  <h3><span class="num">4.10</span>Crawl, runtime noise and timeouts</h3>
+  <pre>"crawl": {
+  "enabled": true,
+  "maxPages": 100,
+  "concurrency": 5,
+  "checkExternal": true,
+  "requireExternalBlank": false,
+  "excludePatterns": ["^/admin", "^/api/"],
+  "softNotFoundText": []
+},
+"runtime": {
+  "ignorePatterns": ["favicon.ico", "google-analytics", "googletagmanager",
+                     "leadconnectorhq", "hubspot", "ResizeObserver loop"]
+},
+"timeouts": { "navigationMs": 30000, "requestMs": 15000 }</pre>
+  <p>The crawl starts from <code>requiredPages</code>, stays on the current origin, normalises URLs so <code>/about</code> and <code>/about/</code> are one page, skips <code>mailto:</code>, <code>tel:</code>, <code>javascript:</code> and anchors, and stops at <code>maxPages</code>.</p>
+  <p><code>softNotFoundText</code> catches soft 404s: if your 404 page returns HTTP 200 (some hosts do), list a phrase unique to it, such as <code>"Page not found"</code>, and the engine will treat pages rendering it as broken.</p>
+  <p><code>runtime.ignorePatterns</code> suppresses third-party console noise. These are matched against both the message text and the resource URL, so an analytics script failing to load does not fail your build.</p>
+
+  <h3><span class="num">4.11</span>Lighthouse</h3>
+  <pre>"lighthousePages": ["/", "/about/", "/services/", "/contact/"],
+"lighthouse": {
+  "enabled": true,
+  "numberOfRuns": 2,
+  "performance": 0.75,
+  "accessibility": 0.90,
+  "bestPractices": 0.90,
+  "seo": 0.90
+}</pre>
+  <p>Lighthouse CI runs each page <code>numberOfRuns</code> times and the median is used, which absorbs most of the variance from shared CI runners. The reporter reads <code>.lighthouseci/manifest.json</code> and applies these thresholds itself, so Lighthouse failures appear in the same report as everything else rather than failing the job separately.</p>
+  <p>Add <code>"preset": "desktop"</code> to score against the desktop profile instead of the default mobile one.</p>
+
+  <h3><span class="num">4.12</span>Severity overrides</h3>
+  <pre>"severity": {
+  "missingAlt": "error",
+  "externalLink": "off",
+  "typography": "error",
+  "accessibilityMinor": "off"
+}</pre>
+  <p>Values are <code>"error"</code>, <code>"warning"</code> or <code>"off"</code>. Every rule key:</p>
+  <table class="long">
+    <thead><tr><th>Group</th><th>Keys</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Pages</td><td><code>brokenRequiredPage</code> <code>notFoundPage</code> <code>softNotFound</code></td></tr>
+      <tr><td class="k">Links</td><td><code>internalLink</code> <code>externalLink</code> <code>externalTargetBlank</code></td></tr>
+      <tr><td class="k">Images</td><td><code>criticalImage</code> <code>nonCriticalImage</code> <code>distortedImage</code> <code>backgroundImage</code> <code>imageSize</code> <code>lazyLoading</code> <code>imageFormat</code> <code>missingAlt</code></td></tr>
+      <tr><td class="k">Forms &amp; identity</td><td><code>missingForm</code> <code>formFields</code> <code>formLabels</code> <code>formIdentity</code> <code>forbiddenBusinessName</code> <code>missingBusinessName</code> <code>missingPhone</code> <code>phoneMismatch</code> <code>missingEmail</code> <code>emailDomain</code> <code>privacyPolicy</code> <code>logoLink</code></td></tr>
+      <tr><td class="k">Layout</td><td><code>horizontalOverflow</code> <code>missingElement</code> <code>elementOverlap</code> <code>clippedText</code> <code>containerWidth</code> <code>pageGutter</code> <code>visualRegression</code> <code>typography</code> <code>brandColor</code></td></tr>
+      <tr><td class="k">Interaction</td><td><code>interaction</code> <code>hoverState</code> <code>focusIndicator</code></td></tr>
+      <tr><td class="k">SEO</td><td><code>seoTitle</code> <code>seoDescription</code> <code>seoH1</code> <code>seoNoindex</code> <code>seoViewport</code> <code>seoLang</code> <code>seoCanonical</code> <code>seoOpenGraph</code> <code>seoMultipleH1</code> <code>headingSkip</code> <code>robotsMissing</code> <code>robotsBlocked</code> <code>sitemap</code></td></tr>
+      <tr><td class="k">Accessibility</td><td><code>accessibilityCritical</code> <code>accessibilityMinor</code></td></tr>
+      <tr><td class="k">Runtime</td><td><code>pageError</code> <code>consoleError</code> <code>failedRequest</code> <code>crossBrowser</code> <code>lighthouse</code> <code>moduleCrash</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="num">4.13</span>Environment variables</h3>
+  <table>
+    <thead><tr><th>Variable</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td class="k"><code>QA_BASE_URL</code></td><td>Overrides <code>baseUrl</code>. CI sets <code>http://127.0.0.1:4321</code>. Use it to run against staging.</td></tr>
+      <tr><td class="k"><code>QA_CONFIG</code></td><td>Path to a different config file &mdash; useful for multi-site monorepos.</td></tr>
+      <tr><td class="k"><code>QA_REUSE_CRAWL=0</code></td><td>Force a fresh crawl instead of reusing <code>qa-results/crawl.json</code>.</td></tr>
+      <tr><td class="k"><code>QA_FAIL_ON_WARNINGS=1</code></td><td>Make warnings block deployment too.</td></tr>
+      <tr><td class="k"><code>QA_CHROMIUM_CHANNEL</code></td><td>Run against an installed Chrome or Edge locally. Leave unset in CI.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ================= 5 ================= -->
+<section class="chapter">
+  <h2><span class="num">5</span>Getting to a clean first run</h2>
+  <p class="lede">The first run on a real site will produce findings. That is the point. The work is deciding, for each one, which of three things it is.</p>
+
+  <table>
+    <thead><tr><th>The finding is&hellip;</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr><td>A real bug</td><td>Fix the site. This is the system doing its job.</td></tr>
+      <tr><td>A real rule you are not ready to enforce yet</td><td>Move it to <code>"warning"</code> or <code>"off"</code> in <code>severity</code>, with a note to revisit.</td></tr>
+      <tr><td>A misconfiguration</td><td>Fix <code>qa-config.json</code> &mdash; usually a selector that does not match.</td></tr>
+    </tbody>
+  </table>
+
+  <p>What not to do is disable rules wholesale to get to green. The following seven are the ones that actually prevent embarrassment, and should stay at <span class="sev e">error</span> from day one:</p>
+  <table>
+    <thead><tr><th>Rule</th><th>What it stops reaching production</th></tr></thead>
+    <tbody>
+      <tr><td class="k"><code>forbiddenBusinessName</code></td><td>Another client's name on this client's site</td></tr>
+      <tr><td class="k"><code>internalLink</code></td><td>Navigation to a page that does not exist</td></tr>
+      <tr><td class="k"><code>missingForm</code></td><td>A contact page that cannot capture a lead</td></tr>
+      <tr><td class="k"><code>brokenRequiredPage</code></td><td>A core page returning 404 or 500</td></tr>
+      <tr><td class="k"><code>horizontalOverflow</code></td><td>A site that scrolls sideways on a phone</td></tr>
+      <tr><td class="k"><code>seoNoindex</code></td><td>A staging <code>noindex</code> shipped to production</td></tr>
+      <tr><td class="k"><code>privacyPolicy</code></td><td>A site with no reachable privacy policy</td></tr>
+    </tbody>
+  </table>
+
+  <h3>A reasonable day-one starting point</h3>
+  <pre>"severity": {
+  "accessibilityMinor": "off",
+  "lazyLoading": "warning",
+  "typography": "warning",
+  "externalLink": "off"
+}</pre>
+  <p>Target zero errors. Carrying warnings is fine and expected &mdash; they are the backlog.</p>
+
+  <div class="box">
+    <span class="label">Expect a second round in CI</span>
+    <p>CI is a different machine. Different fonts, a slower Lighthouse, a cold cache. A few new findings on the first CI run is normal, not a sign that something is wrong. Fix or tune, push again.</p>
+  </div>
+
+  <h3>Commit and push</h3>
+  <pre>git add .
+git commit -m "Add automated website QA CI/CD"
+git push -u origin setup/qa-cicd</pre>
+</section>
+
+<!-- ================= 6 ================= -->
+<section class="chapter">
+  <h2><span class="num">6</span>Phase 2A &mdash; GitLab implementation</h2>
+  <p class="lede">The engine has nothing platform-specific in it, so GitLab is a good place to trial the system before committing to it everywhere. Only <code>.gitlab-ci.yml</code> differs from the GitHub setup.</p>
+
+  <div class="step">
+    <p class="step-title"><span class="n">5</span>Add the CI/CD variables</p>
+    <p><strong>Settings &rarr; CI/CD &rarr; Variables &rarr; Add variable</strong>, three times:</p>
+    <table>
+      <thead><tr><th>Key</th><th>Value</th><th>Flags</th></tr></thead>
+      <tbody>
+        <tr><td class="k"><code>CLOUDFLARE_API_TOKEN</code></td><td>Scoped token (section 8)</td><td>Masked, <strong>Protected</strong></td></tr>
+        <tr><td class="k"><code>CLOUDFLARE_ACCOUNT_ID</code></td><td>From Workers &amp; Pages &rarr; Overview</td><td>Masked, <strong>Protected</strong></td></tr>
+        <tr><td class="k"><code>CLOUDFLARE_PROJECT</code></td><td>Pages project name, exactly</td><td><strong>Protected</strong></td></tr>
+      </tbody>
+    </table>
+    <div class="box stop">
+      <span class="label">Do this before you push</span>
+      <p><strong>Protected</strong> restricts a variable to jobs running on protected branches. Without it, a merge request from a feature branch or a fork can read your Cloudflare token. Protect the branch first (next step), then the variables work on <code>main</code> and nowhere else.</p>
+    </div>
+    <p>Leave <code>CLOUDFLARE_PROJECT</code> unmasked &mdash; masking imposes length and character rules that project names often fail, and the name is not sensitive.</p>
+  </div>
+
+  <div class="step">
+    <p class="step-title"><span class="n">6</span>Protect the default branch</p>
+    <p><strong>Settings &rarr; Repository &rarr; Protected branches</strong></p>
+    <ul>
+      <li>Branch: <code>main</code></li>
+      <li>Allowed to push: <strong>No one</strong></li>
+      <li>Allowed to merge: Maintainers, or Developers + Maintainers</li>
+      <li>Allowed to force push: off</li>
+    </ul>
+    <p><strong>Settings &rarr; Merge requests</strong></p>
+    <ul>
+      <li>Enable <strong>Pipelines must succeed</strong></li>
+      <li>Optionally, <strong>All threads must be resolved</strong></li>
+    </ul>
+    <p>"Pipelines must succeed" is GitLab's equivalent of a required status check. Because the reporter exits 1 on any error, a failing QA run fails the job, fails the pipeline and blocks the merge.</p>
+  </div>
+
+  <div class="step">
+    <p class="step-title"><span class="n">7</span>Push and inspect</p>
+    <p>Push the branch and open a merge request. Check three places:</p>
+    <ul>
+      <li><strong>CI/CD &rarr; Pipelines</strong> &mdash; the <code>qa</code> job runs. The <code>deploy</code> job does not appear for a merge request.</li>
+      <li><strong>The merge request page</strong> &mdash; a test summary listing every check, from the JUnit report. Errors appear as failures, warnings as skipped.</li>
+      <li><strong>Job &rarr; Browse artifacts</strong> &mdash; <code>qa-report.md</code>, screenshots, Lighthouse HTML.</li>
+    </ul>
+  </div>
+
+  <h3>Runner notes</h3>
+  <p>The pipeline needs a Docker-executor runner, which is the default on GitLab.com shared runners. It uses <code>node:20-bookworm</code> and installs Playwright browsers with <code>--with-deps</code>, caching them in <code>.playwright/</code> keyed on <code>package-lock.json</code>. Expect 8&ndash;15 minutes for a first run and 4&ndash;8 minutes afterwards.</p>
+  <p><strong>A faster image.</strong> Microsoft's Playwright image ships the browsers preinstalled:</p>
+  <pre>variables:
+  NODE_IMAGE: "mcr.microsoft.com/playwright:v1.49.0-noble"</pre>
+  <p>Then delete the <code>npx playwright install</code> line. The image tag must match the Playwright version in your <code>package-lock.json</code>, or you get a confusing "Executable doesn't exist" error. If you would rather not track that, keep the default.</p>
+  <p><strong>Shared runner minutes.</strong> On GitLab.com's free tier, running Playwright and Lighthouse on every push to every branch consumes compute minutes quickly. To trial it more cheaply, narrow the trigger:</p>
+  <pre>qa:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH</pre>
+  <p>Self-hosted runners have no such limit; run it on everything.</p>
+
+  <h3>Manual approval before production</h3>
+  <p>GitLab's protected environments feature requires Premium. On Free, make the deploy job manual so a person clicks to release:</p>
+  <pre>deploy:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH &amp;&amp; $CI_PIPELINE_SOURCE == "push"
+      when: manual</pre>
+</section>
+
+<!-- ================= 7 ================= -->
+<section class="chapter">
+  <h2><span class="num">7</span>Phase 2B &mdash; GitHub implementation</h2>
+  <p class="lede">Everything tuned on GitLab carries over unchanged. In each repo you swap the CI file, move three variables and replace the branch rules.</p>
+
+  <div class="step">
+    <p class="step-title"><span class="n">5</span>Open the pull request and watch the first run</p>
+    <p>GitHub &rarr; <strong>Pull requests</strong> &rarr; <strong>New pull request</strong> &rarr; base <code>main</code>, compare <code>setup/qa-cicd</code>.</p>
+    <p>In the <strong>Actions</strong> tab, the <strong>QA and Deploy</strong> run executes the <code>Website QA</code> job. The <strong>Deploy to Cloudflare Pages</strong> job shows as <strong>skipped</strong> &mdash; correct, because pull requests never deploy.</p>
+    <div class="box warn">
+      <span class="label">If the run is blocked</span>
+      <p>Organisations often restrict which actions may run. Fix at <strong>Settings &rarr; Actions &rarr; General &rarr; Actions permissions</strong>, allowing at minimum <code>actions/checkout</code>, <code>actions/setup-node</code>, <code>actions/cache</code> and <code>actions/upload-artifact</code>.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <p class="step-title"><span class="n">6</span>Read the results</p>
+    <ul>
+      <li><strong>Job summary</strong> &mdash; bottom of the run page. The whole <code>qa-report.md</code> renders there, tables and all. This is the link to send a project manager.</li>
+      <li><strong>Annotations</strong> &mdash; errors and warnings appear inline at the top of the run and against the pull request.</li>
+      <li><strong>Artifacts</strong> &mdash; <code>qa-report-&lt;run id&gt;</code>, containing the reports, screenshots, Lighthouse HTML and <code>preview.log</code>. Uploaded even when QA fails.</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <p class="step-title"><span class="n">7</span>Add the secrets and the variable</p>
+    <p><strong>Settings &rarr; Secrets and variables &rarr; Actions</strong></p>
+    <table>
+      <thead><tr><th>Tab</th><th>Name</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Secrets</td><td class="k"><code>CLOUDFLARE_API_TOKEN</code></td><td>Scoped token (section 8)</td></tr>
+        <tr><td>Secrets</td><td class="k"><code>CLOUDFLARE_ACCOUNT_ID</code></td><td>From Workers &amp; Pages &rarr; Overview</td></tr>
+        <tr><td>Variables</td><td class="k"><code>CLOUDFLARE_PROJECT</code></td><td>Pages project name, exactly</td></tr>
+      </tbody>
+    </table>
+    <p>The project name is a variable rather than a secret deliberately: it is not sensitive, and keeping it readable makes a misconfiguration obvious. The deploy job verifies all three before attempting anything and fails with an annotation naming whichever is missing.</p>
+  </div>
+
+  <div class="step">
+    <p class="step-title"><span class="n">8</span>Create the ruleset</p>
+    <p><strong>Settings &rarr; Rules &rarr; Rulesets &rarr; New ruleset &rarr; New branch ruleset</strong></p>
+    <ul>
+      <li>Name: <code>Protect main</code></li>
+      <li>Enforcement status: <strong>Active</strong></li>
+      <li>Target branches: Add target &rarr; <strong>Include default branch</strong></li>
+    </ul>
+    <p>Enable: <strong>Require a pull request before merging</strong>; <strong>Require status checks to pass</strong> &rarr; Add checks &rarr; <strong>Website QA</strong>; <strong>Block force pushes</strong>.</p>
+    <div class="box warn">
+      <span class="label">Ordering matters</span>
+      <p><code>Website QA</code> only appears in the status-check picker <em>after</em> it has reported at least once. Run the pull request first, then create the ruleset. The name comes from the job's <code>name:</code> in the workflow &mdash; if you rename the job, update the ruleset or the rule silently stops protecting anything.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <p class="step-title"><span class="n">9</span>Optional &mdash; require a human for production</p>
+    <p><strong>Settings &rarr; Environments &rarr; production &rarr; Required reviewers.</strong> The deploy job already runs in the <code>production</code> environment, so adding reviewers means every production deploy waits for a named person to approve, even after QA passes. Worth it for a high-stakes site; unnecessary friction for a brochure site.</p>
+  </div>
+</section>
+
+<!-- ================= 8 ================= -->
+<section class="chapter">
+  <h2><span class="num">8</span>Phase 3 &mdash; Cloudflare</h2>
+
+  <h3>Create the Pages project</h3>
+  <p>If the site is already on Cloudflare Pages, note the exact project name &mdash; it is case-sensitive. Otherwise create a <strong>Direct Upload</strong> project. Do not connect it to Git; the pipeline does the deploying.</p>
+  <pre>npx wrangler pages project create acme-plumbing --production-branch=main</pre>
+
+  <h3>Create a least-privilege API token</h3>
+  <p>Cloudflare dashboard &rarr; <strong>My Profile</strong> &rarr; <strong>API Tokens</strong> &rarr; <strong>Create Token</strong>. Use the <strong>Edit Cloudflare Workers</strong> template, or build a custom token with:</p>
+  <ul>
+    <li><strong>Permissions:</strong> Account &rarr; <em>Cloudflare Pages</em> &rarr; <strong>Edit</strong></li>
+    <li><strong>Account Resources:</strong> Include &rarr; your account only</li>
+  </ul>
+  <p>Copy it immediately; Cloudflare shows it once.</p>
+  <div class="box stop">
+    <span class="label">Never use the Global API Key</span>
+    <p>It grants full access to every zone on the account and cannot be scoped down. A scoped Pages token can do exactly one thing: deploy to Pages.</p>
+  </div>
+
+  <h3>Find the account ID</h3>
+  <p><strong>Workers &amp; Pages &rarr; Overview</strong>; the Account ID is in the right-hand sidebar. It is also the hex string in the dashboard URL after <code>dash.cloudflare.com/</code>.</p>
+
+  <h3>Prevent double deployment</h3>
+  <div class="box stop">
+    <span class="label">The step people skip</span>
+    <p>If Cloudflare Pages is connected directly to the repository &mdash; it supports both GitHub and GitLab &mdash; Cloudflare builds and deploys on its own whenever the default branch changes, <strong>without ever looking at your QA result</strong>. You would have a gate that blocks nothing while appearing to work.</p>
+  </div>
+  <p><strong>Option A &mdash; CI owns production (recommended).</strong> Cloudflare dashboard &rarr; <strong>Workers &amp; Pages</strong> &rarr; your project &rarr; <strong>Settings</strong> &rarr; <strong>Builds &amp; deployments</strong> &rarr; <strong>Disconnect</strong> the Git integration. The project, its custom domain and its deployment history all remain; only the automatic Git build stops. <code>wrangler pages deploy</code> keeps working through the Direct Upload path. From that point nothing reaches production without passing QA.</p>
+  <p><strong>Option B &mdash; Cloudflare owns production, QA stays advisory.</strong> Keep the Git integration, delete the deploy job, and rely on branch protection: QA must pass before a merge, and only merges trigger Cloudflare's build. Weaker, because an admin pushing straight to the default branch bypasses QA entirely. Choose this only if something else depends on Cloudflare's own build pipeline.</p>
+
+  <h3>Output directory</h3>
+  <p>The deploy step runs <code>wrangler pages deploy dist</code>. If <code>astro.config.mjs</code> sets a different <code>outDir</code>, change <code>dist</code> in the CI file to match.</p>
+</section>
+
+<!-- ================= 9 ================= -->
+<section class="chapter">
+  <h2><span class="num">9</span>Phase 4 &mdash; Proving the gate works</h2>
+  <p class="lede">Do not trust a gate you have not watched fail. Run these on the setup branch before merging; each costs about three minutes of CI. Revert each one once you have seen it work.</p>
+
+  <table class="long">
+    <thead><tr><th>#</th><th>Break this</th><th>Expected result</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1</td><td>Push an ordinary change</td><td>QA runs; deploy skipped</td></tr>
+      <tr><td class="n">2</td><td>Add <code>&lt;a href="/this-page-does-not-exist/"&gt;x&lt;/a&gt;</code></td><td><span class="sev e">Fail</span> naming the broken target and the page linking to it</td></tr>
+      <tr><td class="n">3</td><td>Point an <code>&lt;img src&gt;</code> at a missing file</td><td><span class="sev e">Fail</span> or <span class="sev w">Warn</span> per config, naming the image and page</td></tr>
+      <tr><td class="n">4</td><td>Visit any invalid route in a browser</td><td>HTTP 404 with header, navigation, content and footer intact</td></tr>
+      <tr><td class="n">5</td><td>Add <code>&lt;div style="width:1800px"&gt;x&lt;/div&gt;</code></td><td><span class="sev e">Fail</span> at mobile and tablet, plus a screenshot artifact</td></tr>
+      <tr><td class="n">6</td><td>Delete the form from <code>/contact/</code></td><td><span class="sev e">Fail</span> &mdash; "Required form not found"</td></tr>
+      <tr><td class="n">7</td><td>Put a <code>forbiddenBusinessNames</code> value on a page</td><td><span class="sev e">Fail</span> naming the value and the page</td></tr>
+      <tr><td class="n">8</td><td>Break the mobile menu toggle</td><td><span class="sev e">Fail</span> from the interaction check</td></tr>
+      <tr><td class="n">9</td><td>Remove a <code>&lt;label&gt;</code> from a form field</td><td>axe reports it at the configured severity</td></tr>
+      <tr><td class="n">10</td><td>Set <code>lighthouse.performance</code> to <code>0.99</code></td><td><span class="sev e">Fail</span>; deploy does not run</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box">
+    <span class="label">Already verified</span>
+    <p>Rows 2&ndash;10 were each exercised against a fixture site while the engine was built. Broken links, broken images, the 404 probe, 1,441&nbsp;px of mobile overflow, a removed form, a leaked company name, a dead menu toggle, an axe <code>image-alt</code> violation and an unreachable Lighthouse threshold all produced the messages above, and the reporter exited 1 every time. A clean run on the same fixture gave 51 passes, 0 errors and exit 0.</p>
+  </div>
+
+  <h3>What a passing run looks like</h3>
+  <pre class="long">==================================
+WEBSITE QA REPORT
+==================================
+[PASS] Required page
+[PASS] SEO basics
+[PASS] Browser runtime
+[PASS] Contact form
+[PASS] Form fields
+[PASS] Typography
+[PASS] Logo link
+[PASS] Privacy policy
+[PASS] Phone number
+[PASS] Email address
+[PASS] 404 page
+[PASS] robots.txt
+[PASS] Sitemap
+[PASS] Internal links
+[PASS] Broken images
+[PASS] Image alt text
+[PASS] Layout
+[PASS] Interaction
+[PASS] Hover state
+[PASS] Focus indicator
+[PASS] Accessibility
+[PASS] Cross-browser
+[PASS] Lighthouse
+
+0 error(s), 0 warning(s), 51 passed check(s)
+
+QA PASSED</pre>
+
+  <h3>And a failing one</h3>
+  <pre class="long">[FAIL] Business name (1 error)
+[FAIL] Contact form (1 error)
+[FAIL] Internal link (1 error)
+[FAIL] Horizontal overflow (4 errors)
+[WARN] Broken image (1 warning)
+[WARN] Image alt text (1 warning)
+
+6 error(s), 5 warning(s), 45 passed check(s)
+
+QA FAILED - deployment blocked</pre>
+  <p>With, in the log and against the pull request:</p>
+  <pre class="long">::error title=Pages / SEO / Identity: Business name::Forbidden business name
+"Old Client Company" found on the page [/]
+::error title=Links: Internal link::/this-page-does-not-exist/ returned HTTP 404
+— linked from / [/]
+::error title=Responsive Layout: Horizontal overflow::mobile: page scrolls 1441px
+horizontally — div (right 1816px) [/ mobile]</pre>
+</section>
+
+<!-- ================= 10 ================= -->
+<section class="chapter">
+  <h2><span class="num">10</span>Day-to-day workflow</h2>
+
+  <div class="flow">
+    <div class="row"><span class="pip"></span><span>Developer branches and pushes</span></div>
+    <div class="row"><span class="pip"></span><span>QA runs automatically &mdash; every branch, every push</span></div>
+    <div class="indent">
+      <div class="row"><span class="pip bad"></span><span><strong>Fail</strong> &mdash; developer reads the report, fixes, pushes again</span></div>
+      <div class="row"><span class="pip good"></span><span><strong>Pass</strong> &mdash; the merge/pull request can be reviewed and approved</span></div>
+    </div>
+    <div class="row"><span class="pip"></span><span>Merge to the default branch</span></div>
+    <div class="row"><span class="pip"></span><span>QA runs again on the merged result</span></div>
+    <div class="indent">
+      <div class="row"><span class="pip good"></span><span><strong>Pass</strong> &rarr; Cloudflare production deployment</span></div>
+      <div class="row"><span class="pip bad"></span><span><strong>Fail</strong> &rarr; deployment never starts</span></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <span class="label">The rule</span>
+    <p>QA runs on every push. Deployment does not. Production deploys only from the default branch, and only after QA passes.</p>
+  </div>
+
+  <h3>Who reads what</h3>
+  <table>
+    <thead><tr><th>Role</th><th>Looks at</th></tr></thead>
+    <tbody>
+      <tr><td>Developer</td><td>The annotations or merge-request test list; screenshots for layout failures; the full job log only when something is genuinely odd</td></tr>
+      <tr><td>Reviewer</td><td>The status check or pipeline result &mdash; it is binary, and it blocks the merge</td></tr>
+      <tr><td>Project manager</td><td><code>qa-report.md</code> in the job summary or artifacts: plain-language tables of what passed, what warned and what failed</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ================= 11 ================= -->
+<section class="chapter">
+  <h2><span class="num">11</span>Rolling it out across every site</h2>
+  <p class="lede">A CI definition has to exist inside each repository &mdash; neither GitHub nor GitLab will run a pipeline that is not in the repo. But "a file" can mean fifteen lines rather than twenty files.</p>
+
+  <table>
+    <thead><tr><th>Model</th><th>Files per repo</th><th>Updating the engine means</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Copy the kit</strong><br><span class="tiny">What the installer does today</span></td><td>About 20</td><td>Re-running the installer with <code>--force</code> on every repo</td></tr>
+      <tr><td><strong>Central kit repo</strong><br><span class="tiny">Reusable workflow or <code>include:</code></span></td><td>2 &mdash; a short CI file and <code>qa-config.json</code></td><td>One push to the kit repo; every site picks it up on its next run</td></tr>
+      <tr><td><strong>Private npm package</strong></td><td>3 &mdash; CI file, config, one dependency</td><td>A version bump per repo</td></tr>
+    </tbody>
+  </table>
+
+  <p>For a team running many client sites, the central kit repo is the right answer. Each site repo then holds only:</p>
+  <pre>.github/workflows/qa.yml   (or .gitlab-ci.yml)   ~15 lines, calls the shared definition
+scripts/qa-config.json                            the client's name, phone, pages, selectors</pre>
+
+  <div class="box">
+    <span class="label">Why this works without code changes</span>
+    <p>The engine resolves every path from the current working directory, and Node resolves <code>import 'playwright'</code> relative to the importing file. So the shared engine can be checked out into <code>.qa-engine/</code> and run against the site at the repo root &mdash; and the QA dependencies stay in the kit repo, leaving each client's <code>package.json</code> untouched. Nothing in <code>scripts/</code> needs to change to move between models.</p>
+  </div>
+
+  <p>Two things to arrange first:</p>
+  <ul>
+    <li><strong>GitHub:</strong> if the kit repo is private, set <strong>Settings &rarr; Actions &rarr; General &rarr; Access</strong> on it to allow access from other repositories in the organisation, and give the calling workflow a token that can check it out.</li>
+    <li><strong>GitLab:</strong> use <code>include: project:</code> pointing at the kit project; the same visibility consideration applies.</li>
+  </ul>
+
+  <h3>Until then, each additional site is</h3>
+  <pre>git checkout -b setup/qa-cicd
+node /path/to/astro-qa-kit/install-qa.mjs .
+npm install -D playwright @playwright/test @lhci/cli wait-on wrangler @axe-core/playwright</pre>
+  <p>Then edit <code>qa-config.json</code>, add the three variables, set the branch rules, and merge. The engine files are byte-identical across every site; only the config differs.</p>
+</section>
+
+<!-- ================= 12 ================= -->
+<section class="chapter">
+  <h2><span class="num">12</span>Troubleshooting</h2>
+
+  <table class="long">
+    <thead><tr><th>Symptom</th><th>Cause and fix</th></tr></thead>
+    <tbody>
+      <tr><td><code>browserType.launch: Executable doesn't exist</code></td><td>Playwright browsers are missing or the cache is stale. Confirm the cache key includes <code>package-lock.json</code> so a Playwright upgrade re-downloads them. On GitLab, clear runner caches and re-run. If you switched to the Playwright Docker image, its tag must match your installed Playwright version.</td></tr>
+      <tr><td><code>wait-on</code> times out</td><td>The preview server never came up. Read <code>preview.log</code> in the artifacts. SSR sites cannot use <code>astro preview</code> &mdash; serve with the adapter's command and set <code>QA_BASE_URL</code>.</td></tr>
+      <tr><td>Every external link fails, but only in CI</td><td>Third-party hosts rate-limit CI runners. 401, 403, 405, 429, 503 and 999 are already skipped. Set <code>severity.externalLink: "off"</code> if it is still noisy.</td></tr>
+      <tr><td>Lighthouse scores move between runs</td><td>Shared runner CPU. Raise <code>lighthouse.numberOfRuns</code> to 3 (the median is used) or lower the performance threshold. Keep accessibility, best practices and SEO strict &mdash; those are stable.</td></tr>
+      <tr><td>"No Lighthouse results found"</td><td><code>lhci autorun</code> did not finish its upload step, so <code>.lighthouseci/manifest.json</code> was never written. The step runs with continue-on-error, so read its log.</td></tr>
+      <tr><td>Dozens of accessibility findings</td><td>Set <code>severity.accessibilityMinor: "off"</code>, fix critical and serious first, or list specific rule ids in <code>accessibility.disableRules</code>.</td></tr>
+      <tr><td>"Trigger not found" on interactions</td><td>Your selectors differ from the config. Add <code>data-qa</code> attributes, or set <code>"optional": true</code> while the component is being built.</td></tr>
+      <tr><td>The crawl is slow or the job times out</td><td>Lower <code>crawl.maxPages</code>, add <code>crawl.excludePatterns</code>, shorten <code>responsivePages</code> and <code>lighthousePages</code>, reduce <code>imageRules.maxPages</code>. The crawl runs once and is shared by every module.</td></tr>
+      <tr><td>Deploy job cannot see the Cloudflare token (GitLab)</td><td>The variable is Protected but the branch is not. Protect the branch, then re-run.</td></tr>
+      <tr><td>Two pipelines fire per push (GitLab)</td><td>The <code>workflow:rules</code> block at the top of <code>.gitlab-ci.yml</code> prevents this &mdash; make sure it was copied.</td></tr>
+      <tr><td>Merge request shows no test report (GitLab)</td><td>The <code>qa</code> job must upload <code>qa-report.junit.xml</code>. <code>artifacts: when: always</code> should upload it even on failure &mdash; check the job's artifact list.</td></tr>
+      <tr><td><code>Website QA</code> missing from the status-check picker (GitHub)</td><td>The check appears only after it has reported once. Run the pull request first, then create the ruleset.</td></tr>
+      <tr><td><code>wrangler</code> authentication error</td><td>The token lacks <em>Cloudflare Pages: Edit</em>, or the account ID belongs to a different account. Confirm the project name matches exactly, including case.</td></tr>
+      <tr><td><strong>The site deployed even though QA failed</strong></td><td>Cloudflare's Git integration is still connected. See section 8, "Prevent double deployment".</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Adding a new check later</h3>
+  <p>Create <code>scripts/&lt;name&gt;-check.mjs</code>, wrap the body in <code>runModule('&lt;name&gt;', async (cfg, results) =&gt; { ... })</code>, record findings with <code>results.issue(cfg, '&lt;ruleKey&gt;', 'Check name', 'message', { page })</code>, add a default severity to <code>DEFAULT_SEVERITY</code> in <code>qa-lib.mjs</code>, and add a step to the CI file. The reporter picks it up automatically &mdash; it reads whatever JSON files exist in <code>qa-results/</code>.</p>
+</section>
+
+<!-- ================= APPENDIX A ================= -->
+<section class="chapter">
+  <h2><span class="num">A</span>Appendix A &mdash; every check</h2>
+
+  <table class="long">
+    <thead><tr><th>#</th><th>Check</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1</td><td>Required pages load; 4xx, 5xx and timeouts fail, redirects allowed</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">2</td><td>Custom 404 page returns 404 and keeps header, nav, content, footer, assets and layout</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">3</td><td>Internal links resolve, including soft-404 detection</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">4</td><td>External links reachable; rate-limited hosts skipped</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">5</td><td>External links use <code>target="_blank"</code> (opt-in)</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">6</td><td>Broken images: failed loads, zero natural size, broken background images</td><td><span class="sev e">Error</span> critical<br><span class="sev w">Warning</span> other</td></tr>
+      <tr><td class="n">7</td><td>Image distortion from a stretched aspect ratio</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">8</td><td>A form exists on every configured form page</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">9</td><td>Form required fields and submit button present</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">10</td><td>Form fields have accessible labels</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">11</td><td>No wrong company name inside a form region</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">12</td><td>No forbidden business name in text, title, meta, Open Graph or footer</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">13</td><td>Expected business name present on required pages</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">14</td><td>Phone present in text and <code>tel:</code> links</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">15</td><td>Visible phone and <code>tel:</code> link agree</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">16</td><td>Email present in text and <code>mailto:</code> links</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">17</td><td><code>mailto:</code> links use the expected domain</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">18</td><td>Privacy policy page exists and is linked from header, nav or footer</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">19</td><td>Logo is visible, clickable and links to <code>/</code></td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">20</td><td>No horizontal overflow at any of five viewports</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">21</td><td>Required elements stay visible at every viewport</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">22</td><td>No clipped text or element overlap</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">23</td><td>Container max-width and page gutters</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">24</td><td>Visual regression against approved baselines (opt-in)</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">25</td><td>Typography: family, size, weight, line-height per selector</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">26</td><td>Brand colours on key selectors</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">27</td><td>Heading hierarchy: missing H1</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">28</td><td>Heading hierarchy: multiple H1 or skipped levels</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">29</td><td>Hover, focus and keyboard-focus states produce a visible change</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">30</td><td>Menus, modals, dropdowns, accordions, tabs and drawers open and close</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">31</td><td>Image optimisation: file size, lazy loading, modern formats</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">32</td><td>SEO: title, meta description, H1, viewport meta, <code>lang</code>, accidental <code>noindex</code></td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">33</td><td>SEO: canonical and Open Graph metadata</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">34</td><td>Missing <code>alt</code> attributes and unlabelled icon buttons</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">35</td><td>axe-core WCAG 2.1 A/AA scan</td><td><span class="sev e">Error</span> critical/serious<br><span class="sev w">Warning</span> other</td></tr>
+      <tr><td class="n">36</td><td><code>robots.txt</code> exists and does not block the whole site</td><td><span class="sev e">Error</span> if blocked</td></tr>
+      <tr><td class="n">37</td><td>Sitemap exists</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">38</td><td>Uncaught JavaScript errors</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">39</td><td>Console errors and failed same-origin requests</td><td><span class="sev w">Warning</span></td></tr>
+      <tr><td class="n">40</td><td>Cross-browser smoke suite in Firefox and WebKit</td><td><span class="sev e">Error</span></td></tr>
+      <tr><td class="n">41</td><td>Lighthouse: Performance &ge; 75, Accessibility &ge; 90, Best Practices &ge; 90, SEO &ge; 90</td><td><span class="sev e">Error</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="box">
+    <span class="label">On WebKit and Safari</span>
+    <p>Playwright's WebKit is an automated approximation of Safari's engine, not Safari itself. It catches the large majority of Safari-specific layout and interaction problems. For a release-critical launch, a final check on a real iOS device is still worth the ten minutes.</p>
+  </div>
+</section>
+
+<!-- ================= APPENDIX B ================= -->
+<section class="chapter">
+  <h2><span class="num">B</span>Appendix B &mdash; the complete qa-config.json</h2>
+  <p class="lede">The shipped defaults. Copy this into a new site and change the identity, pages and selectors.</p>
+
+  <pre class="long">{
+  "baseUrl": "http://localhost:4321",
+
+  "businessName": "Nextkin",
+  "businessNameAliases": [],
+  "forbiddenBusinessNames": ["Old Client Company"],
+
+  "phone": "+1 604 555 1234",
+  "requiredPhone": true,
+  "email": "hello@nextkin.com",
+  "emailDomain": "nextkin.com",
+  "requiredEmail": true,
+
+  "privacyPolicyUrl": "/privacy-policy/",
+  "requiredPages": ["/", "/about/", "/services/", "/contact/", "/privacy-policy/"],
+
+  "formPages": ["/contact/"],
+  "formSelectors": ["form", "iframe[src*='leadconnectorhq']", "iframe[src*='hubspot']"],
+  "formRequiredFields": ["name", "email"],
+
+  "logoSelector": "header a",
+  "headerSelector": "header",
+  "footerSelector": "footer",
+  "navSelector": "header nav",
+  "notFoundPath": "/qa-404-probe-do-not-create/",
+
+  "crawl": {
+    "enabled": true,
+    "maxPages": 100,
+    "concurrency": 5,
+    "checkExternal": true,
+    "requireExternalBlank": false,
+    "excludePatterns": ["^/admin", "^/api/"],
+    "softNotFoundText": []
+  },
+
+  "viewports": {
+    "mobile": { "width": 375, "height": 812 },
+    "tablet": { "width": 768, "height": 1024 },
+    "laptop": { "width": 1366, "height": 768 },
+    "desktop": { "width": 1920, "height": 1080 },
+    "wide": { "width": 2560, "height": 1440 }
+  },
+  "responsivePages": ["/", "/contact/"],
+
+  "design": {
+    "containerSelector": null,
+    "containerMaxWidth": 1280,
+    "pageGutterMin": 16,
+    "overflowTolerancePx": 2,
+    "requiredVisibleSelectors": ["header", "main", "footer"],
+    "noOverlapSelectors": [],
+    "brandColors": ["#111827", "#2563EB"],
+    "colorRules": [],
+    "typography": {
+      "body": { "selector": "body", "fontFamily": "Inter", "fontSize": "16px", "lineHeight": "24px" }
+    }
+  },
+
+  "states": {
+    "enabled": true,
+    "pages": ["/"],
+    "selectors": ["header nav a", "a.btn", "button[type='submit']"],
+    "maxElementsPerSelector": 5,
+    "requireFocusIndicator": true
+  },
+
+  "interactions": [
+    {
+      "name": "Mobile navigation",
+      "page": "/",
+      "viewport": "mobile",
+      "trigger": "[data-qa='menu-toggle'], button[aria-label*='menu' i], .hamburger, .menu-toggle",
+      "target": "[data-qa='mobile-menu'], #mobile-menu, .mobile-nav",
+      "expect": "visible",
+      "closeAfter": true,
+      "optional": true
+    }
+  ],
+
+  "accessibility": {
+    "enabled": true,
+    "pages": ["/", "/contact/"],
+    "tags": ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"],
+    "disableRules": [],
+    "errorImpacts": ["critical", "serious"]
+  },
+
+  "imageRules": {
+    "maxFileSizeKB": 500,
+    "requireLazyLoadBelowFold": true,
+    "preferModernFormats": false,
+    "checkBackgroundImages": true,
+    "aspectRatioTolerance": 0.1,
+    "maxPages": 50,
+    "criticalSelectors": ["header img", "img[alt*='logo' i]", "[class*='hero'] img"]
+  },
+
+  "visualRegression": {
+    "enabled": false,
+    "maxDiffRatio": 0.01,
+    "pages": ["/"],
+    "viewports": ["mobile", "desktop"]
+  },
+
+  "browsers": ["chromium", "firefox", "webkit"],
+  "crossBrowser": {
+    "pages": ["/", "/contact/"],
+    "viewports": ["mobile", "desktop"]
+  },
+
+  "runtime": {
+    "ignorePatterns": [
+      "favicon.ico",
+      "google-analytics",
+      "googletagmanager",
+      "leadconnectorhq",
+      "hubspot",
+      "ResizeObserver loop"
+    ]
+  },
+
+  "seo": {
+    "checkAllCrawledPages": true,
+    "pages": [],
+    "requireCanonical": true,
+    "requireOpenGraph": true
+  },
+
+  "robots": { "enabled": true },
+  "sitemap": { "enabled": true, "paths": ["/sitemap-index.xml", "/sitemap.xml"] },
+
+  "lighthousePages": ["/", "/about/", "/services/", "/contact/"],
+  "lighthouse": {
+    "enabled": true,
+    "numberOfRuns": 2,
+    "performance": 0.75,
+    "accessibility": 0.9,
+    "bestPractices": 0.9,
+    "seo": 0.9
+  },
+
+  "timeouts": { "navigationMs": 30000, "requestMs": 15000 },
+
+  "severity": {}
+}</pre>
+</section>
+
+</body>
+</html>

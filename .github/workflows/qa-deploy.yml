@@ -1,0 +1,185 @@
+name: QA and Deploy
+
+# QA runs on every push to every branch, and on every pull request into main.
+# Production deployment runs only for a push/merge to main, and only after QA passes.
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  QA_BASE_URL: http://127.0.0.1:4321
+
+jobs:
+  qa:
+    name: Website QA
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Build Astro site
+        run: npm run build
+
+      - name: Start production preview server
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4321 > preview.log 2>&1 &
+          npx wait-on -t 90000 http://127.0.0.1:4321
+          echo "Preview server is up at $QA_BASE_URL"
+
+      # Each QA module records its findings and always exits 0.
+      # qa-reporter.mjs is the single gate that decides PASS / FAIL.
+      - name: QA - pages, SEO, forms, identity
+        run: npm run qa:core
+
+      - name: QA - broken links
+        run: npm run qa:links
+
+      - name: QA - broken images
+        run: npm run qa:images
+
+      - name: QA - responsive layout
+        run: npm run qa:responsive
+
+      - name: QA - interactive elements
+        run: npm run qa:interactions
+
+      - name: QA - accessibility
+        run: npm run qa:accessibility
+
+      - name: QA - cross-browser smoke tests
+        run: npm run qa:cross-browser
+
+      - name: Read visual-regression setting
+        id: visual-config
+        run: |
+          enabled=$(node -p "JSON.parse(require('fs').readFileSync('scripts/qa-config.json','utf8')).visualRegression?.enabled === true ? 'true' : 'false'")
+          echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+
+      - name: QA - visual regression
+        id: visual
+        if: steps.visual-config.outputs.enabled == 'true'
+        continue-on-error: true
+        run: npx playwright test tests/visual --project=chromium
+
+      - name: Record visual-regression result
+        if: steps.visual-config.outputs.enabled == 'true'
+        run: >
+          node scripts/record-result.mjs
+          --module visual
+          --check "Visual regression"
+          --rule visualRegression
+          --outcome "${{ steps.visual.outcome }}"
+          --message "Screenshot comparison against the approved baselines (see the qa-report artifact for diff images)"
+
+      - name: QA - Lighthouse CI
+        continue-on-error: true
+        run: npm run qa:lighthouse
+
+      - name: Build QA report (deployment gate)
+        id: report
+        run: npm run qa:report
+
+      - name: Publish QA report to the job summary
+        if: always()
+        run: |
+          if [ -f qa-report.md ]; then
+            cat qa-report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No qa-report.md was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload QA artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-report-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            qa-report.md
+            qa-report.json
+            qa-results/
+            .lighthouseci/
+            preview.log
+            test-results/
+
+  deploy:
+    name: Deploy to Cloudflare Pages
+    needs: qa
+    # Only a push/merge to main may deploy, and only because `needs: qa` passed.
+    if: |
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Verify deployment configuration
+        env:
+          CLOUDFLARE_PROJECT: ${{ vars.CLOUDFLARE_PROJECT }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=""
+          if [ -z "$CLOUDFLARE_PROJECT" ]; then missing="$missing CLOUDFLARE_PROJECT(variable)"; fi
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then missing="$missing CLOUDFLARE_API_TOKEN(secret)"; fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then missing="$missing CLOUDFLARE_ACCOUNT_ID(secret)"; fi
+          if [ -n "$missing" ]; then
+            echo "::error title=Cloudflare configuration missing::Set:$missing in Settings -> Secrets and variables -> Actions"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Astro site
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler pages deploy dist --project-name="${{ vars.CLOUDFLARE_PROJECT }}" --branch=main

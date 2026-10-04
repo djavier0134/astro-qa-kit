@@ -1,0 +1,26 @@
+{
+  "comment": "Merge these into your Astro project's package.json. install-qa.mjs does it for you.",
+  "scripts": {
+    "qa": "node scripts/qa-check.mjs && node scripts/qa-reporter.mjs",
+    "qa:all": "node scripts/qa-all.mjs",
+    "qa:core": "node scripts/qa-check.mjs",
+    "qa:links": "node scripts/check-links.mjs",
+    "qa:images": "node scripts/check-images.mjs",
+    "qa:responsive": "node scripts/responsive-check.mjs",
+    "qa:interactions": "node scripts/interaction-check.mjs",
+    "qa:accessibility": "node scripts/accessibility-check.mjs",
+    "qa:cross-browser": "node scripts/cross-browser-check.mjs",
+    "qa:visual": "playwright test tests/visual --project=chromium",
+    "qa:visual:update": "playwright test tests/visual --project=chromium --update-snapshots",
+    "qa:lighthouse": "lhci autorun --config=lighthouserc.cjs",
+    "qa:report": "node scripts/qa-reporter.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.0",
+    "@lhci/cli": "^0.14.0",
+    "@playwright/test": "^1.49.0",
+    "playwright": "^1.49.0",
+    "wait-on": "^8.0.0",
+    "wrangler": "^3.90.0"
+  }
+}

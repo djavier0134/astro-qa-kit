@@ -1,0 +1,146 @@
+{
+  "baseUrl": "http://localhost:4321",
+
+  "businessName": "Nextkin",
+  "businessNameAliases": [],
+  "forbiddenBusinessNames": ["Old Client Company"],
+
+  "phone": "+1 604 555 1234",
+  "requiredPhone": true,
+  "email": "hello@nextkin.com",
+  "emailDomain": "nextkin.com",
+  "requiredEmail": true,
+
+  "privacyPolicyUrl": "/privacy-policy/",
+  "requiredPages": ["/", "/about/", "/services/", "/contact/", "/privacy-policy/"],
+
+  "formPages": ["/contact/"],
+  "formSelectors": ["form", "iframe[src*='leadconnectorhq']", "iframe[src*='hubspot']"],
+  "formRequiredFields": ["name", "email"],
+
+  "logoSelector": "header a",
+  "headerSelector": "header",
+  "footerSelector": "footer",
+  "navSelector": "header nav",
+  "notFoundPath": "/qa-404-probe-do-not-create/",
+
+  "crawl": {
+    "enabled": true,
+    "maxPages": 100,
+    "concurrency": 5,
+    "checkExternal": true,
+    "requireExternalBlank": false,
+    "excludePatterns": ["^/admin", "^/api/"],
+    "softNotFoundText": []
+  },
+
+  "viewports": {
+    "mobile": { "width": 375, "height": 812 },
+    "tablet": { "width": 768, "height": 1024 },
+    "laptop": { "width": 1366, "height": 768 },
+    "desktop": { "width": 1920, "height": 1080 },
+    "wide": { "width": 2560, "height": 1440 }
+  },
+  "responsivePages": ["/", "/contact/"],
+
+  "design": {
+    "containerSelector": null,
+    "containerMaxWidth": 1280,
+    "pageGutterMin": 16,
+    "overflowTolerancePx": 2,
+    "requiredVisibleSelectors": ["header", "main", "footer"],
+    "noOverlapSelectors": [],
+    "brandColors": ["#111827", "#2563EB"],
+    "colorRules": [],
+    "typography": {
+      "body": { "selector": "body", "fontFamily": "Inter", "fontSize": "16px", "lineHeight": "24px" }
+    }
+  },
+
+  "states": {
+    "enabled": true,
+    "pages": ["/"],
+    "selectors": ["header nav a", "a.btn", "button[type='submit']"],
+    "maxElementsPerSelector": 5,
+    "requireFocusIndicator": true
+  },
+
+  "interactions": [
+    {
+      "name": "Mobile navigation",
+      "page": "/",
+      "viewport": "mobile",
+      "trigger": "[data-qa='menu-toggle'], button[aria-label*='menu' i], .hamburger, .menu-toggle",
+      "target": "[data-qa='mobile-menu'], #mobile-menu, .mobile-nav",
+      "expect": "visible",
+      "closeAfter": true,
+      "optional": true
+    }
+  ],
+
+  "accessibility": {
+    "enabled": true,
+    "pages": ["/", "/contact/"],
+    "tags": ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"],
+    "disableRules": [],
+    "errorImpacts": ["critical", "serious"]
+  },
+
+  "imageRules": {
+    "maxFileSizeKB": 500,
+    "requireLazyLoadBelowFold": true,
+    "preferModernFormats": false,
+    "checkBackgroundImages": true,
+    "aspectRatioTolerance": 0.1,
+    "maxPages": 50,
+    "criticalSelectors": ["header img", "img[alt*='logo' i]", "[class*='hero'] img"]
+  },
+
+  "visualRegression": {
+    "enabled": false,
+    "maxDiffRatio": 0.01,
+    "pages": ["/"],
+    "viewports": ["mobile", "desktop"]
+  },
+
+  "browsers": ["chromium", "firefox", "webkit"],
+  "crossBrowser": {
+    "pages": ["/", "/contact/"],
+    "viewports": ["mobile", "desktop"]
+  },
+
+  "runtime": {
+    "ignorePatterns": [
+      "favicon.ico",
+      "google-analytics",
+      "googletagmanager",
+      "leadconnectorhq",
+      "hubspot",
+      "ResizeObserver loop"
+    ]
+  },
+
+  "seo": {
+    "checkAllCrawledPages": true,
+    "pages": [],
+    "requireCanonical": true,
+    "requireOpenGraph": true
+  },
+
+  "robots": { "enabled": true },
+  "sitemap": { "enabled": true, "paths": ["/sitemap-index.xml", "/sitemap.xml"] },
+
+  "lighthousePages": ["/", "/about/", "/services/", "/contact/"],
+  "lighthouse": {
+    "enabled": true,
+    "numberOfRuns": 2,
+    "performance": 0.75,
+    "accessibility": 0.9,
+    "bestPractices": 0.9,
+    "seo": 0.9
+  },
+
+  "timeouts": { "navigationMs": 30000, "requestMs": 15000 },
+
+  "severity": {}
+}

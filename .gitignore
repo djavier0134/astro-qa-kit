@@ -1,0 +1,9 @@
+# Website QA output
+qa-results/
+qa-report.json
+qa-report.md
+qa-report.junit.xml
+.lighthouseci/
+preview.log
+test-results/
+node_modules/

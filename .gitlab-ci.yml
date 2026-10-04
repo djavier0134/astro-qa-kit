@@ -1,0 +1,109 @@
+# Website QA + Cloudflare deployment for Astro sites — GitLab CI.
+#
+# QA runs on every push to every branch and on every merge request.
+# Production deployment runs only on the default branch, after QA passes.
+#
+# Copy this to the root of the project as .gitlab-ci.yml.
+
+stages:
+  - qa
+  - deploy
+
+variables:
+  NODE_IMAGE: "node:20-bookworm"
+  QA_BASE_URL: "http://127.0.0.1:4321"
+  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+  PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.playwright"
+
+# Run one pipeline per change: a merge-request pipeline when an MR is open,
+# a branch pipeline otherwise. Without this, both fire and you pay twice.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+qa:
+  stage: qa
+  image: $NODE_IMAGE
+  timeout: 40 minutes
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+      - .playwright/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+  script:
+    - npm ci
+    - npx playwright install --with-deps chromium firefox webkit
+    - npm run build
+
+    # Start the production preview server and wait for it.
+    - npm run preview -- --host 127.0.0.1 --port 4321 > preview.log 2>&1 &
+    - npx wait-on -t 90000 "$QA_BASE_URL"
+    - echo "Preview server is up at $QA_BASE_URL"
+
+    # Each module records findings and exits 0. qa-reporter.mjs is the gate.
+    - npm run qa:core
+    - npm run qa:links
+    - npm run qa:images
+    - npm run qa:responsive
+    - npm run qa:interactions
+    - npm run qa:accessibility
+    - npm run qa:cross-browser
+    - npm run qa:lighthouse || echo "Lighthouse step did not complete; the report will say so"
+
+    # Exits 1 if any ERROR was recorded, which fails the job and blocks deploy.
+    - npm run qa:report
+  artifacts:
+    when: always
+    expire_in: 14 days
+    name: "qa-report-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - qa-report.md
+      - qa-report.json
+      - qa-results/
+      - .lighthouseci/
+      - preview.log
+    reports:
+      # Renders every check in the merge request widget.
+      # Errors show as failures; warnings show as skipped.
+      junit: qa-report.junit.xml
+
+deploy:
+  stage: deploy
+  image: $NODE_IMAGE
+  needs:
+    - job: qa
+      artifacts: false
+  rules:
+    # Only a push to the default branch deploys. Merge requests never do.
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
+  environment:
+    name: production
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+    policy: pull
+  script:
+    - |
+      missing=""
+      if [ -z "$CLOUDFLARE_PROJECT" ]; then missing="$missing CLOUDFLARE_PROJECT"; fi
+      if [ -z "$CLOUDFLARE_API_TOKEN" ]; then missing="$missing CLOUDFLARE_API_TOKEN"; fi
+      if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then missing="$missing CLOUDFLARE_ACCOUNT_ID"; fi
+      if [ -n "$missing" ]; then
+        echo "Missing CI/CD variables:$missing"
+        echo "Set them in Settings -> CI/CD -> Variables (masked and protected)."
+        exit 1
+      fi
+    - npm ci
+    - npm run build
+    - npx wrangler pages deploy dist --project-name="$CLOUDFLARE_PROJECT" --branch=main
