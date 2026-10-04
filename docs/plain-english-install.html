@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Website QA, explained simply</title>
+<style>
+  @page { size: A4; }
+
+  :root {
+    --ink: #16201e;
+    --ink-soft: #55615e;
+    --rule: #d8dcda;
+    --rule-soft: #e9ecea;
+    --accent: #0f6b62;
+    --accent-bg: #eef5f4;
+    --warn: #8a5000;
+    --warn-bg: #fdf4e5;
+    --fail: #a32c22;
+    --fail-bg: #fcefed;
+    --code-bg: #f4f6f5;
+    --font: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --mono: Consolas, "Cascadia Mono", "SFMono-Regular", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--font);
+    font-size: 10.2pt;
+    line-height: 1.5;
+    color: var(--ink);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  p { margin: 0 0 .5em; }
+  ul, ol { margin: .4em 0 .7em; padding-left: 1.3em; }
+  li { margin: .18em 0; }
+  strong, b { font-weight: 600; }
+
+  /* ---------- cover ---------- */
+
+  .cover { height: 247mm; display: flex; flex-direction: column; }
+  .cover .rule-top { height: 6px; background: var(--accent); margin-bottom: 14mm; }
+  .cover .kicker {
+    font-size: 8.5pt; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin-bottom: 8mm;
+  }
+  .cover h1 {
+    font-size: 30pt; line-height: 1.1; font-weight: 600;
+    letter-spacing: -.015em; margin: 0 0 6mm; max-width: 150mm;
+  }
+  .cover .sub { font-size: 12pt; color: var(--ink-soft); max-width: 140mm; line-height: 1.45; }
+  .cover .spacer { flex: 1; }
+  .cover .stack {
+    border-top: 1px solid var(--rule);
+    padding-top: 5mm; font-size: 9pt; color: var(--ink-soft);
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 4mm 10mm; max-width: 150mm;
+  }
+  .cover .stack dt { font-weight: 600; color: var(--ink); font-size: 8pt; letter-spacing: .06em; text-transform: uppercase; }
+  .cover .stack dd { margin: .5mm 0 0; }
+
+  /* ---------- contents ---------- */
+
+  .toc { break-before: page; }
+  .toc h2 { border: 0; margin-bottom: 6mm; }
+  .toc ol { list-style: none; padding: 0; margin: 0; column-count: 1; }
+  .toc > ol > li { margin: 0 0 1.5mm; font-weight: 600; font-size: 10.5pt; }
+  .toc ol ol { padding-left: 6mm; margin: .8mm 0 2.5mm; }
+  .toc ol ol li { font-weight: 400; font-size: 9.4pt; color: var(--ink-soft); margin: .3mm 0; }
+  .toc .num { display: inline-block; min-width: 9mm; color: var(--accent); }
+
+  /* ---------- structure ---------- */
+
+  .chapter { break-before: page; }
+
+  h2 {
+    font-size: 17pt; font-weight: 600; letter-spacing: -.01em;
+    margin: 0 0 4mm; padding-bottom: 2.5mm; border-bottom: 2px solid var(--ink);
+    break-after: avoid;
+  }
+  h2 .num { color: var(--accent); margin-right: 3mm; }
+
+  h3 {
+    font-size: 12pt; font-weight: 600; margin: 7mm 0 2mm;
+    break-after: avoid; letter-spacing: -.005em;
+  }
+  h3 .num { color: var(--accent); font-weight: 400; margin-right: 2.5mm; }
+
+  h4 {
+    font-size: 10.2pt; font-weight: 600; margin: 4.5mm 0 1.5mm;
+    break-after: avoid;
+  }
+
+  .lede { font-size: 10.8pt; color: var(--ink-soft); margin-bottom: 4mm; max-width: 155mm; }
+
+  /* ---------- code ---------- */
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--rule-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 3px;
+    padding: 2.5mm 3mm;
+    margin: 2mm 0 3mm;
+    font-family: var(--mono);
+    font-size: 8.3pt;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+    break-inside: avoid;
+  }
+  pre.long { break-inside: auto; }
+  code {
+    font-family: var(--mono);
+    font-size: 8.8pt;
+    background: var(--code-bg);
+    border: 1px solid var(--rule-soft);
+    border-radius: 2px;
+    padding: 0 .9mm;
+    word-break: break-word;
+  }
+  pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+
+  /* ---------- tables ---------- */
+
+  table {
+    width: 100%; border-collapse: collapse; margin: 2.5mm 0 4mm;
+    font-size: 9pt; break-inside: avoid;
+  }
+  table.long { break-inside: auto; }
+  table.long tr { break-inside: avoid; }
+  th, td { text-align: left; padding: 1.6mm 2.2mm; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  thead th {
+    font-size: 7.8pt; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-soft); border-bottom: 1.5px solid var(--rule); font-weight: 600;
+  }
+  thead { display: table-header-group; }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.n { font-family: var(--mono); color: var(--accent); white-space: nowrap; width: 8mm; }
+  td.k { white-space: nowrap; }
+
+  .sev { font-weight: 600; font-size: 8.2pt; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+  .sev.e { color: var(--fail); }
+  .sev.w { color: var(--warn); }
+  .sev.p { color: var(--accent); }
+
+  /* ---------- callouts ---------- */
+
+  .box {
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    background: var(--accent-bg);
+    border-radius: 3px;
+    padding: 2.8mm 3.5mm;
+    margin: 3mm 0;
+    font-size: 9.4pt;
+    break-inside: avoid;
+  }
+  .box.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  .box.stop { border-left-color: var(--fail); background: var(--fail-bg); }
+  .box > :first-child { margin-top: 0; }
+  .box > :last-child { margin-bottom: 0; }
+  .box .label {
+    display: block; font-size: 7.8pt; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 700; margin-bottom: 1.2mm; color: var(--accent);
+  }
+  .box.warn .label { color: var(--warn); }
+  .box.stop .label { color: var(--fail); }
+
+  /* ---------- step blocks ---------- */
+
+  .step {
+    border-top: 1px solid var(--rule-soft);
+    padding-top: 3mm;
+    margin-top: 4mm;
+    break-inside: avoid-page;
+  }
+  .step.open { break-inside: auto; }
+  .step-title { font-size: 11pt; font-weight: 600; margin: 0 0 1.5mm; }
+  .step-title .n {
+    display: inline-block; min-width: 7mm; color: #fff; background: var(--accent);
+    border-radius: 2px; text-align: center; font-size: 8.5pt; font-family: var(--mono);
+    padding: .3mm 1mm; margin-right: 2.5mm; vertical-align: 1px;
+  }
+
+  /* ---------- flow ---------- */
+
+  .flow { border: 1px solid var(--rule); border-radius: 3px; padding: 4mm; margin: 3mm 0; break-inside: avoid; font-size: 9.4pt; }
+  .flow .row { display: flex; align-items: flex-start; gap: 2.5mm; margin: .8mm 0; }
+  .flow .pip { width: 2.2mm; height: 2.2mm; border-radius: 50%; background: var(--accent); margin-top: 1.6mm; flex: none; }
+  .flow .pip.good { background: #2f7d4f; }
+  .flow .pip.bad { background: var(--fail); }
+  .flow .indent { margin-left: 5mm; padding-left: 3mm; border-left: 1px solid var(--rule); }
+
+  .tiny { font-size: 8.6pt; color: var(--ink-soft); }
+  .nowrap { white-space: nowrap; }
+</style>
+</head>
+<body>
+<section class="cover">
+  <div class="rule-top"></div>
+  <div class="kicker">Goodly Growth &middot; Web Team</div>
+  <h1>Website QA, explained simply</h1>
+  <p class="sub">
+    How to add an automatic website checker to an Astro site &mdash; what it does,
+    how to set it up, and how to read what it tells you. Written for people who
+    are not developers.
+  </p>
+  <div class="spacer"></div>
+  <dl class="stack">
+    <div><dt>What it is</dt><dd>A robot that checks your website before it goes live</dd></div>
+    <div><dt>What it costs</dt><dd>Nothing &mdash; it runs on GitHub for free</dd></div>
+    <div><dt>Time, first site</dt><dd>About 1&ndash;2 hours</dd></div>
+    <div><dt>Time, every site after</dt><dd>About 10 minutes</dd></div>
+  </dl>
+</section>
+
+<section class="toc">
+  <h2>What's in this guide</h2>
+  <ol>
+    <li><span class="num">1</span> What this thing actually does</li>
+    <li><span class="num">2</span> Before you start</li>
+    <li><span class="num">3</span> Setting it up, step by step</li>
+    <li><span class="num">4</span> Telling it about your website</li>
+    <li><span class="num">5</span> Running it on your own computer</li>
+    <li><span class="num">6</span> How to read the results</li>
+    <li><span class="num">7</span> Turning on the lock</li>
+    <li><span class="num">8</span> Proving it actually works</li>
+    <li><span class="num">9</span> Things that go wrong, and what to do</li>
+    <li><span class="num">10</span> Words you'll see, explained</li>
+  </ol>
+</section>
+
+<!-- ============================================================ -->
+<section class="chapter">
+  <h2><span class="num">1</span>What this thing actually does</h2>
+
+  <p class="lede">
+    Think of it as a very thorough, very fast assistant who checks every page of
+    a website before a client ever sees it &mdash; and who is allowed to say "no,
+    this isn't going live yet."
+  </p>
+
+  <h3>The problem it solves</h3>
+  <p>
+    Most things that embarrass a web team on launch day are not clever or subtle.
+    They are things like:
+  </p>
+  <ul>
+    <li>A link that goes to a page that no longer exists</li>
+    <li>A photo that doesn't load</li>
+    <li>The <em>previous</em> client's business name still sitting in the footer,
+        because this site was copied from theirs</li>
+    <li>The contact form quietly disappearing during a redesign</li>
+    <li>A page that scrolls sideways on a phone</li>
+  </ul>
+  <p>
+    Every one of these is findable by a machine. They get missed because checking
+    twenty pages across five screen sizes by hand is dull work, and dull work gets
+    skipped when a deadline is close.
+  </p>
+
+  <div class="box">
+    <div class="label">In one sentence</div>
+    <p style="margin:0">
+      It builds your website, opens it in real web browsers, clicks around, and
+      refuses to let a broken version go live.
+    </p>
+  </div>
+
+  <h3>What it checks</h3>
+  <p>Thirty-four checks, grouped into seven areas:</p>
+  <table>
+    <thead>
+      <tr><th style="width:32%">Area</th><th>In plain English</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Pages &amp; search</strong></td>
+        <td>Do the important pages load? Does each one have a title and description so
+            Google can list it properly? Is the "page not found" page intact?</td></tr>
+      <tr><td><strong>Identity</strong></td>
+        <td>Is the right business name on the site? Is the <em>wrong</em> one anywhere?
+            Are the phone number and email correct, and clickable?</td></tr>
+      <tr><td><strong>Forms</strong></td>
+        <td>Does the contact form still exist, and does it have the fields it needs?</td></tr>
+      <tr><td><strong>Links</strong></td>
+        <td>Does every link actually go somewhere?</td></tr>
+      <tr><td><strong>Images</strong></td>
+        <td>Do the pictures load? Are any stretched out of shape or enormous?</td></tr>
+      <tr><td><strong>Layout</strong></td>
+        <td>Does the page look right on a phone, a tablet and a desktop? Anything
+            overlapping, cut off, or sliding off the side?</td></tr>
+      <tr><td><strong>Clicking &amp; accessibility</strong></td>
+        <td>Do menus open and close? Can someone using only a keyboard get around?
+            Is the text readable against its background?</td></tr>
+    </tbody>
+  </table>
+
+  <h3>What it does <em>not</em> do</h3>
+  <p>
+    It doesn't judge whether the design is nice, whether the writing is any good,
+    or whether the site does what the client wanted. It checks that things
+    <em>work</em>, not that they are <em>right</em>. A human still has to look at it.
+  </p>
+
+  <h3>How it fits into the day</h3>
+  <div class="flow">
+    <div class="row"><span class="pip"></span>Someone changes the website and saves their work to GitHub</div>
+    <div class="row indent"><span class="pip"></span>The robot wakes up automatically and starts checking</div>
+    <div class="row indent"><span class="pip bad"></span>Finds something broken &rarr; the website does <strong>not</strong> go live</div>
+    <div class="row indent"><span class="pip good"></span>Everything fine &rarr; the website goes live by itself</div>
+  </div>
+  <p class="tiny">
+    Nobody has to remember to run it. That's the whole point.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section class="chapter">
+  <h2><span class="num">2</span>Before you start</h2>
+
+  <h3>What you need</h3>
+  <table>
+    <thead><tr><th style="width:30%">Thing</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>An Astro website in GitHub</td><td>This is the website's filing cabinet, stored online</td></tr>
+      <tr><td><strong>Admin</strong> access to it</td><td>You'll need to change settings, not just files</td></tr>
+      <tr><td>Node.js version 22 or newer</td><td>The software that runs the checks. Free</td></tr>
+      <tr><td>About 2 hours, once</td><td>Only for the first site. Later ones take minutes</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box warn">
+    <div class="label">Check your Node version first</div>
+    <p style="margin:0">
+      Open a terminal and type <code>node --version</code>. If it says anything
+      lower than <code>v22</code>, install a newer one from nodejs.org before
+      going further. Astro refuses to build on older versions, and you'll waste
+      time wondering why.
+    </p>
+  </div>
+
+  <h3>One thing to find out before you begin</h3>
+  <p>
+    Open your website's folder and look for where <code>package.json</code> lives.
+    There are two common shapes:
+  </p>
+  <table>
+    <thead><tr><th style="width:38%">Shape</th><th>What it means for you</th></tr></thead>
+    <tbody>
+      <tr><td><code>package.json</code> at the top</td>
+        <td>The simple case. Follow the steps exactly as written</td></tr>
+      <tr><td><code>package.json</code> inside a <code>site/</code> folder</td>
+        <td>Very common at Goodly. You'll need one extra step &mdash; see the box in section 3</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section class="chapter">
+  <h2><span class="num">3</span>Setting it up, step by step</h2>
+
+  <div class="step">
+    <div class="step-title"><span class="n">1</span>Get the kit onto your computer</div>
+    <p>You only ever do this once. It puts a copy of the checking tools on your machine.</p>
+    <pre><code>git clone https://github.com/djavier0134/astro-qa-kit.git</code></pre>
+    <p class="tiny">Remember where it lands &mdash; you'll point at this folder from every site.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-title"><span class="n">2</span>Make a safe space to work in</div>
+    <p>
+      Never do setup work directly on the live version. Make a "branch" &mdash; a
+      private copy you can experiment in without anyone noticing.
+    </p>
+    <pre><code>git checkout -b setup/qa-cicd</code></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-title"><span class="n">3</span>Copy the kit into your website</div>
+    <p>From inside your website's folder:</p>
+    <pre><code>node /path/to/astro-qa-kit/install-qa.mjs .</code></pre>
+    <p>
+      If your <code>package.json</code> is inside a <code>site/</code> folder,
+      use <code>site</code> instead of the dot:
+    </p>
+    <pre><code>node /path/to/astro-qa-kit/install-qa.mjs site</code></pre>
+
+    <div class="box stop">
+      <div class="label">Important if you used <code>site</code></div>
+      <p>
+        The installer will put a file at <code>site/.github/workflows/qa-deploy.yml</code>.
+        <strong>That is the wrong place.</strong> GitHub only looks for these files at
+        the very top of the project, so if you leave it there, the checker will
+        never run at all &mdash; and everything will look fine, because there will be
+        no errors. Move it up:
+      </p>
+      <pre style="margin-bottom:0"><code>mkdir -p .github/workflows
+mv site/.github/workflows/qa-deploy.yml .github/workflows/</code></pre>
+      <p style="margin:.5em 0 0">
+        Then open that file and ask a developer to add <code>working-directory: site</code>
+        to it. This is the single most common way to end up with a checker that
+        silently does nothing.
+      </p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-title"><span class="n">4</span>Install the extra tools</div>
+    <p>These are the robot's eyes &mdash; real web browsers it can drive.</p>
+    <pre><code>npm install -D playwright@1.57.0 @playwright/test@1.57.0 @lhci/cli wait-on wrangler @axe-core/playwright</code></pre>
+    <pre><code>npx playwright install chromium firefox webkit</code></pre>
+    <p class="tiny">
+      That second command downloads about 400&nbsp;MB. It only happens once per computer.
+    </p>
+
+    <div class="box warn">
+      <div class="label">If you're on Windows and the download fails</div>
+      <p style="margin:0">
+        Some networks can't reach the servers these browsers come from. You don't
+        need to fix it &mdash; just tell the checker to use the Chrome you already
+        have installed. See section 5.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="chapter">
+  <h2><span class="num">4</span>Telling it about your website</h2>
+
+  <p class="lede">
+    This is the only part that's different for each site, and it's the part worth
+    taking your time over. Everything else is identical everywhere.
+  </p>
+
+  <p>
+    Open the file <code>scripts/qa-config.json</code>. It's a list of settings.
+    Change the values between the quote marks; leave the rest alone.
+  </p>
+
+  <h3>The business details</h3>
+  <pre><code>"businessName": "Ammons Awnings &amp; Handrails",
+"businessNameAliases": ["Ammons Awnings", "Ammons"],
+"forbiddenBusinessNames": ["Some Other Client", "Lorem Ipsum"],
+
+"phone": "912-261-1069",
+"email": "hello@example.com",
+"emailDomain": "example.com",</code></pre>
+
+  <div class="box">
+    <div class="label">The most valuable setting in the whole file</div>
+    <p style="margin:0">
+      <code>forbiddenBusinessNames</code>. Because sites get copied from one
+      another, the previous client's name sometimes survives into the new site.
+      Put the names of your <em>other</em> clients here. If one of them ever shows
+      up on this website, the checker stops everything immediately. This single
+      setting prevents the most embarrassing mistake in the business.
+    </p>
+  </div>
+
+  <h3>Which pages matter</h3>
+  <pre><code>"requiredPages": ["/", "/about", "/services", "/contact", "/privacy-policy"],
+"formPages": ["/contact"],</code></pre>
+  <p>
+    These are the pages that <em>must</em> work. If any of them fails to load,
+    nothing goes live.
+  </p>
+
+  <div class="box stop">
+    <div class="label">Slashes matter more than you'd think</div>
+    <p style="margin:0">
+      Some sites use <code>/contact</code> and some use <code>/contact/</code>
+      &mdash; with a slash at the end. These are treated as different addresses, and
+      using the wrong one gives you a page-not-found error for a page that is
+      perfectly fine. Open the real website, look at the address bar, and copy
+      whichever form it uses.
+    </p>
+  </div>
+
+  <h3>Where things are on the page</h3>
+  <pre><code>"logoSelector": "header a.brand",
+"headerSelector": "header",
+"footerSelector": "footer",</code></pre>
+  <p>
+    These tell the checker where to find the logo, the top bar and the bottom bar.
+    A developer can read these off the site in a couple of minutes. If they're
+    wrong, you'll get confusing "logo not found" messages on every single page.
+  </p>
+
+  <h3>Leave these alone at first</h3>
+  <p>
+    <code>design.colorRules</code>, <code>design.noOverlapSelectors</code> and
+    <code>visualRegression</code> all start switched off deliberately. Turn them
+    on later, once the design is signed off. Turning them on early means spending
+    your first week chasing complaints about things that aren't actually wrong.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section class="chapter">
+  <h2><span class="num">5</span>Running it on your own computer</h2>
+
+  <div class="box stop">
+    <div class="label">Do this before you upload anything</div>
+    <p style="margin:0">
+      Get it working on your own machine first. Checking on your computer takes
+      seconds. Checking online takes about eight minutes each time. Finding your
+      first forty problems eight minutes at a time is a miserable afternoon.
+    </p>
+  </div>
+
+  <p>You need two terminal windows.</p>
+
+  <p><strong>Window one</strong> &mdash; start a local copy of the website and leave it running:</p>
+  <pre><code>npm run build
+npm run preview -- --host 127.0.0.1 --port 4321</code></pre>
+
+  <p><strong>Window two</strong> &mdash; run the checks:</p>
+  <pre><code>npm run qa:all</code></pre>
+
+  <p>While you're still fixing things, skip the two slowest checks:</p>
+  <pre><code>npm run qa:all -- --skip lighthouse,crossbrowser</code></pre>
+
+  <div class="box warn">
+    <div class="label">On Windows, if it says "Executable doesn't exist"</div>
+    <p>
+      It couldn't download its own browser. Tell it to borrow Chrome instead.
+      In PowerShell:
+    </p>
+    <pre style="margin-bottom:0"><code>$env:QA_CHROMIUM_CHANNEL="chrome"; npm run qa:all -- --skip lighthouse,crossbrowser</code></pre>
+    <p style="margin:.5em 0 0">
+      Only do this on your own computer. The online version downloads its browsers
+      without trouble.
+    </p>
+  </div>
+
+  <h3>Where the results appear</h3>
+  <table>
+    <thead><tr><th style="width:42%">File</th><th>What's in it</th></tr></thead>
+    <tbody>
+      <tr><td><code>qa-report.md</code></td><td>The readable report. Start here</td></tr>
+      <tr><td><code>qa-results/screenshots/</code></td><td>Pictures of any page that looked wrong</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section class="chapter">
+  <h2><span class="num">6</span>How to read the results</h2>
+
+  <p>Every finding is one of three things:</p>
+
+  <table>
+    <thead><tr><th style="width:20%">Label</th><th style="width:26%">What happens</th><th>What it means</th></tr></thead>
+    <tbody>
+      <tr><td><span class="sev e">Error</span></td><td>Nothing goes live</td>
+          <td>Something is genuinely broken. Fix it</td></tr>
+      <tr><td><span class="sev w">Warning</span></td><td>Site still goes live</td>
+          <td>Worth looking at, not urgent</td></tr>
+      <tr><td><span class="sev p">Pass</span></td><td>&mdash;</td>
+          <td>That check was fine</td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    <strong>Only errors stop a release.</strong> You can have fifty warnings and
+    still go live. That's deliberate &mdash; if warnings blocked things, you'd never
+    ship anything.
+  </p>
+
+  <h3>What to do with each finding</h3>
+  <table>
+    <thead><tr><th style="width:38%">If the finding is&hellip;</th><th>Then</th></tr></thead>
+    <tbody>
+      <tr><td>A genuine problem with the site</td><td>Fix the website</td></tr>
+      <tr><td>A real rule you're not ready to enforce</td>
+          <td>Change it to <code>"warning"</code> in the settings</td></tr>
+      <tr><td>The checker misunderstanding something</td>
+          <td>Fix the settings file, not the website</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box">
+    <div class="label">Rules worth keeping strict from day one</div>
+    <p style="margin:0">
+      Wrong business name, broken internal links, missing contact form, a required
+      page that won't load, a page that scrolls sideways on a phone, a page
+      accidentally hidden from Google, and a missing privacy policy. These are the
+      ones that cause real damage.
+    </p>
+  </div>
+
+  <h3>Aim for zero errors, not zero warnings</h3>
+  <p>
+    Zero errors is the goal. Carrying warnings is completely normal and nothing to
+    feel bad about. Resist the urge to switch rules off just to get a clean
+    screen &mdash; a checker that's been quietened into silence protects nobody.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section class="chapter">
+  <h2><span class="num">7</span>Turning on the lock</h2>
+
+  <p class="lede">
+    Up to now the checker reports problems but can't actually stop anything. This
+    is where you give it teeth.
+  </p>
+
+  <div class="step">
+    <div class="step-title"><span class="n">1</span>Upload your work</div>
+    <pre><code>git add .
+git commit -m "Add automatic website checking"
+git push -u origin setup/qa-cicd</code></pre>
+    <p>Then on GitHub, open a "pull request" &mdash; a request to merge your work in.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-title"><span class="n">2</span>Watch it run</div>
+    <p>
+      Go to the <strong>Actions</strong> tab. You'll see it working through the
+      checks. Scroll to the bottom of the page for the full report.
+    </p>
+    <p class="tiny">
+      First time online usually turns up a few new things. Different computer,
+      slightly different results. Normal.
+    </p>
+  </div>
+
+  <div class="step">
+    <div class="step-title"><span class="n">3</span>Lock the main version</div>
+    <p>
+      Settings &rarr; Rules &rarr; Rulesets &rarr; New branch ruleset. Name it
+      <em>Protect main</em>, set it to <strong>Active</strong>, target the default
+      branch, and tick:
+    </p>
+    <ul>
+      <li>Require a pull request before merging</li>
+      <li>Require status checks to pass &rarr; choose <strong>Website QA</strong></li>
+      <li>Block force pushes</li>
+    </ul>
+    <div class="box warn">
+      <div class="label">Can't find "Website QA" in the list?</div>
+      <p style="margin:0">
+        It only appears after the check has run at least once. Let step 2 finish,
+        then come back.
+      </p>
+    </div>
+  </div>
+
+  <div class="box stop">
+    <div class="label">The step people skip &mdash; and it undoes everything</div>
+    <p style="margin:0">
+      If your hosting (Cloudflare Pages) is connected directly to GitHub, it builds
+      and publishes the site <em>by itself</em> whenever the main version changes
+      &mdash; without ever looking at the checker's verdict. You would have a lock on
+      the front door and an open window beside it. Either disconnect that direct
+      connection and let the checker handle publishing, or accept that the checker
+      is only giving advice. Ask a developer which applies to your site.
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="chapter">
+  <h2><span class="num">8</span>Proving it actually works</h2>
+
+  <p class="lede">
+    Don't trust a safety net you've never watched catch anything. Break things on
+    purpose, on your branch, and check it notices. Put each one back afterwards.
+  </p>
+
+  <table>
+    <thead><tr><th style="width:52%">Break this on purpose</th><th>You should see</th></tr></thead>
+    <tbody>
+      <tr><td>Add a link to a page that doesn't exist</td><td>Error naming the bad link</td></tr>
+      <tr><td>Point a photo at a missing file</td><td>Error naming the image</td></tr>
+      <tr><td>Delete the contact form</td><td>Error: required form not found</td></tr>
+      <tr><td>Put another client's name on a page</td><td>Error naming the word and the page</td></tr>
+      <tr><td>Add something very wide to a page</td><td>Error on phone and tablet, plus a screenshot</td></tr>
+      <tr><td>Break the mobile menu button</td><td>Error: the menu didn't open</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box stop">
+    <div class="label">On a real client's website</div>
+    <p style="margin:0">
+      Only ever do these on your own branch, never on the live version &mdash; and
+      only after the hosting question in section 7 is settled. Otherwise you risk
+      publishing a deliberately broken site to a real customer.
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="chapter">
+  <h2><span class="num">9</span>Things that go wrong, and what to do</h2>
+
+  <table>
+    <thead><tr><th style="width:40%">What you see</th><th>What's happening</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Checks never run at all, no errors anywhere</td>
+        <td>The workflow file is in the wrong folder. See the red box in section 3.
+            This is the dangerous one, because it looks like success</td>
+      </tr>
+      <tr>
+        <td><code>Node.js v20 is not supported by Astro</code></td>
+        <td>Node is too old. It needs version 22 or newer</td>
+      </tr>
+      <tr>
+        <td>Pages you know exist are reported as missing</td>
+        <td>Almost always the trailing-slash problem in section 4</td>
+      </tr>
+      <tr>
+        <td><code>Executable doesn't exist</code></td>
+        <td>Browsers didn't download. On Windows, use the Chrome workaround in section 5</td>
+      </tr>
+      <tr>
+        <td>You fixed something, but the same error keeps appearing</td>
+        <td>You're probably looking at an old run, or pressed "Re-run jobs" on one.
+            Re-running re-tests the <em>old</em> version. Check the run matches your
+            newest change</td>
+      </tr>
+      <tr>
+        <td>Dozens of accessibility complaints</td>
+        <td>Normal on an older site. Set <code>accessibilityMinor</code> to
+            <code>"off"</code>, deal with the serious ones first</td>
+      </tr>
+      <tr>
+        <td>Performance scores wobble between runs</td>
+        <td>Shared machines vary. Lower the threshold slightly, or raise the number
+            of runs so it takes an average</td>
+      </tr>
+      <tr>
+        <td><strong>The site went live even though checks failed</strong></td>
+        <td>The hosting is still publishing on its own. Go back to the red box in
+            section 7</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section class="chapter">
+  <h2><span class="num">10</span>Words you'll see, explained</h2>
+
+  <table>
+    <thead><tr><th style="width:26%">Word</th><th>What it means</th></tr></thead>
+    <tbody>
+      <tr><td>Repository (repo)</td><td>The website's filing cabinet, stored on GitHub</td></tr>
+      <tr><td>Branch</td><td>A private copy where you can work without affecting the live site</td></tr>
+      <tr><td>Main</td><td>The real version. What's on main is what customers get</td></tr>
+      <tr><td>Commit</td><td>A saved change, with a note about what you did</td></tr>
+      <tr><td>Push</td><td>Uploading your saved changes to GitHub</td></tr>
+      <tr><td>Pull request</td><td>Asking for your branch to be merged into main</td></tr>
+      <tr><td>Merge</td><td>Folding your branch into main. This is the moment it becomes real</td></tr>
+      <tr><td>Deploy</td><td>Publishing the website so the public can see it</td></tr>
+      <tr><td>GitHub Actions</td><td>GitHub's robot. It's what runs the checks</td></tr>
+      <tr><td>Workflow</td><td>The instructions telling that robot what to do</td></tr>
+      <tr><td>Build</td><td>Turning the website's source files into actual web pages</td></tr>
+      <tr><td>Artifact</td><td>Files saved from a run &mdash; reports, screenshots &mdash; for you to download</td></tr>
+      <tr><td>Lighthouse</td><td>Google's tool for scoring speed, accessibility and search-readiness</td></tr>
+      <tr><td>Accessibility (a11y)</td><td>Whether people with disabilities can use the site</td></tr>
+      <tr><td>Viewport</td><td>Screen size &mdash; phone, tablet, laptop, desktop</td></tr>
+      <tr><td>Selector</td><td>A short piece of text that points at part of a page, like the logo</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box">
+    <div class="label">If you remember nothing else</div>
+    <p style="margin:0">
+      Get it working on your own computer before uploading. Only errors stop a
+      release. And check that your hosting isn't publishing the site behind the
+      checker's back &mdash; otherwise none of this protects you.
+    </p>
+  </div>
+</section>
+
+</body>
+</html>
