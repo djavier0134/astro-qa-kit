@@ -21,14 +21,15 @@
   <ol>
     <li><span class="num">1</span> What this thing actually does</li>
     <li><span class="num">2</span> Before you start</li>
-    <li><span class="num">3</span> Setting it up, step by step</li>
+    <li><span class="num">3</span> Adding it to a website that already exists</li>
     <li><span class="num">4</span> Telling it about your website</li>
     <li><span class="num">5</span> Running it on your own computer</li>
     <li><span class="num">6</span> How to read the results</li>
-    <li><span class="num">7</span> Turning on the lock</li>
-    <li><span class="num">8</span> Proving it actually works</li>
-    <li><span class="num">9</span> Things that go wrong, and what to do</li>
-    <li><span class="num">10</span> Words you'll see, explained</li>
+    <li><span class="num">7</span> When the site is older and there's a lot to fix</li>
+    <li><span class="num">8</span> Turning on the lock</li>
+    <li><span class="num">9</span> Proving it actually works</li>
+    <li><span class="num">10</span> Things that go wrong, and what to do</li>
+    <li><span class="num">11</span> Words you'll see, explained</li>
   </ol>
 </section>
 
@@ -159,7 +160,22 @@
 
 <!-- ============================================================ -->
 <section class="chapter">
-  <h2><span class="num">3</span>Setting it up, step by step</h2>
+  <h2><span class="num">3</span>Adding it to a website that already exists</h2>
+
+  <p class="lede">
+    This is the normal case. The website is already built, already live, and has
+    been running for months or years. You are adding a safety net to something
+    that already works &mdash; not building a new site.
+  </p>
+
+  <div class="box">
+    <div class="label">Nothing you do here changes the website itself</div>
+    <p style="margin:0">
+      The checker only <em>reads</em> the site. It adds its own files alongside
+      yours, and it never edits your pages, your styling or your content. If you
+      change your mind, section 3 ends with how to take it out again.
+    </p>
+  </div>
 
   <div class="step">
     <div class="step-title"><span class="n">1</span>Get the kit onto your computer</div>
@@ -169,16 +185,33 @@
   </div>
 
   <div class="step">
-    <div class="step-title"><span class="n">2</span>Make a safe space to work in</div>
+    <div class="step-title"><span class="n">2</span>Get a copy of the website</div>
+    <p>
+      If the site isn't already on your computer, download it from GitHub. Replace
+      the address with your own site's:
+    </p>
+    <pre><code>git clone https://github.com/your-org/your-site.git
+cd your-site</code></pre>
+    <p>
+      If you already have it, make sure you're starting from the current version
+      rather than something from three weeks ago:
+    </p>
+    <pre><code>git checkout main
+git pull</code></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-title"><span class="n">3</span>Make a safe space to work in</div>
     <p>
       Never do setup work directly on the live version. Make a "branch" &mdash; a
-      private copy you can experiment in without anyone noticing.
+      private copy you can experiment in without anyone noticing. Nothing you do
+      on a branch can affect the real website until somebody deliberately merges it.
     </p>
     <pre><code>git checkout -b setup/qa-cicd</code></pre>
   </div>
 
   <div class="step">
-    <div class="step-title"><span class="n">3</span>Copy the kit into your website</div>
+    <div class="step-title"><span class="n">4</span>Copy the kit into your website</div>
     <p>From inside your website's folder:</p>
     <pre><code>node /path/to/astro-qa-kit/install-qa.mjs .</code></pre>
     <p>
@@ -207,7 +240,41 @@ mv site/.github/workflows/qa-deploy.yml .github/workflows/</code></pre>
   </div>
 
   <div class="step">
-    <div class="step-title"><span class="n">4</span>Install the extra tools</div>
+    <div class="step-title"><span class="n">5</span>Check what it added</div>
+    <p>Run this to see exactly what changed:</p>
+    <pre><code>git status --short</code></pre>
+    <p>You should see a list like this, and nothing else:</p>
+    <table>
+      <thead><tr><th style="width:38%">What appeared</th><th>What it is</th></tr></thead>
+      <tbody>
+        <tr><td><code>scripts/qa-*.mjs</code></td><td>The checking engine</td></tr>
+        <tr><td><code>scripts/qa-config.json</code></td><td>The settings file you'll edit next</td></tr>
+        <tr><td><code>tests/</code></td><td>Browser tests</td></tr>
+        <tr><td><code>.github/workflows/</code></td><td>Instructions for GitHub's robot</td></tr>
+        <tr><td><code>package.json</code> (modified)</td><td>New shortcut commands added</td></tr>
+        <tr><td><code>.gitignore</code> (modified)</td><td>Stops reports cluttering the project</td></tr>
+      </tbody>
+    </table>
+    <p>
+      <strong>None of your own files are touched.</strong> The installer refuses to
+      overwrite anything that already exists, so your pages, images and styling
+      are exactly as they were.
+    </p>
+
+    <div class="box warn">
+      <div class="label">If the site already had its own checks</div>
+      <p style="margin:0">
+        Some older sites have a home-made <code>qa</code> command already. Because
+        the installer won't overwrite it, you can end up with two different things
+        both called "qa", which is confusing later. If <code>package.json</code>
+        already had a <code>qa</code> entry, ask a developer to rename the old one
+        to <code>qa:legacy</code> so there's no ambiguity about which one runs.
+      </p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-title"><span class="n">6</span>Install the extra tools</div>
     <p>These are the robot's eyes &mdash; real web browsers it can drive.</p>
     <pre><code>npm install -D playwright@1.57.0 @playwright/test@1.57.0 @lhci/cli wait-on wrangler @axe-core/playwright</code></pre>
     <pre><code>npx playwright install chromium firefox webkit</code></pre>
@@ -224,6 +291,18 @@ mv site/.github/workflows/qa-deploy.yml .github/workflows/</code></pre>
       </p>
     </div>
   </div>
+
+  <h3>If you want to undo all of it</h3>
+  <p>
+    While you're still on your branch and haven't merged anything, you can throw
+    the whole thing away and the website is untouched:
+  </p>
+  <pre><code>git checkout main
+git branch -D setup/qa-cicd</code></pre>
+  <p>
+    That deletes your branch and everything on it. The live site never saw any of
+    it. This is why step 3 insists on working in a branch.
+  </p>
 </section>
 
 <!-- ============================================================ -->
@@ -402,7 +481,82 @@ npm run preview -- --host 127.0.0.1 --port 4321</code></pre>
 
 <!-- ============================================================ -->
 <section class="chapter">
-  <h2><span class="num">7</span>Turning on the lock</h2>
+  <h2><span class="num">7</span>When the site is older and there's a lot to fix</h2>
+
+  <p class="lede">
+    The first time you point this at a website that has been live for years, it
+    will find a lot. That is not a disaster and it is not a sign the site is bad.
+    It is simply the first time anyone has counted.
+  </p>
+
+  <h3>Expect this, and don't panic</h3>
+  <p>
+    A mature site commonly turns up thirty or forty findings on the first run.
+    Most will be warnings. A handful will be real. On the live client site we
+    tested this with, the very first run found a genuine accessibility problem
+    that had been shipped and never noticed &mdash; which is the point of the
+    exercise.
+  </p>
+
+  <div class="box stop">
+    <div class="label">The mistake to avoid</div>
+    <p style="margin:0">
+      Do not try to fix everything before switching it on, and do not switch off
+      all the rules to get a clean screen. Both end the same way: the checker gets
+      abandoned. Aim for <strong>zero errors</strong> and accept the warnings for now.
+    </p>
+  </div>
+
+  <h3>A sensible order to work in</h3>
+  <table>
+    <thead><tr><th style="width:12%">Order</th><th>Do this</th></tr></thead>
+    <tbody>
+      <tr><td><strong>First</strong></td>
+        <td>Fix anything that is genuinely broken &mdash; dead links, missing forms,
+            a wrong business name. These are usually few and quick</td></tr>
+      <tr><td><strong>Second</strong></td>
+        <td>For real problems you can't fix today, change them from
+            <code>"error"</code> to <code>"warning"</code>. They stay visible but
+            stop blocking releases</td></tr>
+      <tr><td><strong>Third</strong></td>
+        <td>Correct anything where the checker simply misunderstood the site &mdash;
+            wrong addresses, wrong selectors. Fix the settings, not the website</td></tr>
+      <tr><td><strong>Later</strong></td>
+        <td>Work the warnings down over the following weeks, promoting rules back
+            to <code>"error"</code> as you clear them</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Softening rules on day one</h3>
+  <p>
+    These four are the usual suspects on an established site, and it is perfectly
+    reasonable to start with them turned down:
+  </p>
+  <pre><code>"severity": {
+  "accessibilityMinor": "off",
+  "lazyLoading": "warning",
+  "typography": "warning",
+  "externalLink": "off"
+}</code></pre>
+  <p class="tiny">
+    <code>"off"</code> means don't mention it. <code>"warning"</code> means tell me
+    but don't block. <code>"error"</code> means stop everything.
+  </p>
+
+  <div class="box">
+    <div class="label">Keep these strict from the very first day</div>
+    <p style="margin:0">
+      Wrong business name, broken internal links, missing contact form, a required
+      page that won't load, sideways scrolling on a phone, a page hidden from
+      Google by accident, and a missing privacy policy. These are the ones that
+      cost money or embarrassment, and they're almost never hard to fix.
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="chapter">
+  <h2><span class="num">8</span>Turning on the lock</h2>
 
   <p class="lede">
     Up to now the checker reports problems but can't actually stop anything. This
@@ -465,7 +619,7 @@ git push -u origin setup/qa-cicd</code></pre>
 
 <!-- ============================================================ -->
 <section class="chapter">
-  <h2><span class="num">8</span>Proving it actually works</h2>
+  <h2><span class="num">9</span>Proving it actually works</h2>
 
   <p class="lede">
     Don't trust a safety net you've never watched catch anything. Break things on
@@ -488,7 +642,7 @@ git push -u origin setup/qa-cicd</code></pre>
     <div class="label">On a real client's website</div>
     <p style="margin:0">
       Only ever do these on your own branch, never on the live version &mdash; and
-      only after the hosting question in section 7 is settled. Otherwise you risk
+      only after the hosting question in section 8 is settled. Otherwise you risk
       publishing a deliberately broken site to a real customer.
     </p>
   </div>
@@ -496,7 +650,7 @@ git push -u origin setup/qa-cicd</code></pre>
 
 <!-- ============================================================ -->
 <section class="chapter">
-  <h2><span class="num">9</span>Things that go wrong, and what to do</h2>
+  <h2><span class="num">10</span>Things that go wrong, and what to do</h2>
 
   <table>
     <thead><tr><th style="width:40%">What you see</th><th>What's happening</th></tr></thead>
@@ -537,7 +691,7 @@ git push -u origin setup/qa-cicd</code></pre>
       <tr>
         <td><strong>The site went live even though checks failed</strong></td>
         <td>The hosting is still publishing on its own. Go back to the red box in
-            section 7</td>
+            section 8</td>
       </tr>
     </tbody>
   </table>
@@ -545,7 +699,7 @@ git push -u origin setup/qa-cicd</code></pre>
 
 <!-- ============================================================ -->
 <section class="chapter">
-  <h2><span class="num">10</span>Words you'll see, explained</h2>
+  <h2><span class="num">11</span>Words you'll see, explained</h2>
 
   <table>
     <thead><tr><th style="width:26%">Word</th><th>What it means</th></tr></thead>
